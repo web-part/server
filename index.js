@@ -3,7 +3,6 @@ const colors = require('colors');
 const $Object = require('@definejs/object');
 const Server = require('@webpart/server-core');
 const API = require('./modules/API');
-const Web = require('./modules/Web');
 
 
 
@@ -30,11 +29,10 @@ module.exports = {
             let { port, } = server;
             let url = API.start(app, port, api);
 
-            if (url) {
-                Web.start(htdocs, url);
-            }
-           
-            done && done(app, server);
+            done && done(app, {
+                ...server,
+                'api': url,
+            });
             
         });
 

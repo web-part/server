@@ -11,9 +11,8 @@ module.exports = {
 
         let url = api.start(app, {
             'url': `http://localhost:${port}`,
-            'path': config.path,
-            'allowCrossOrigin': config.allowCrossOrigin,
             'stat': config.stat,
+            'allowCrossOrigin': config.allowCrossOrigin,
         });
 
         return url;

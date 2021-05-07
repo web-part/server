@@ -1,6 +1,6 @@
 {
   "name": "@webpart/server",
-  "version": "3.0.1",
+  "version": "3.0.3",
   "description": "",
   "main": "index.js",
   "scripts": {},
@@ -13,10 +13,8 @@
     "url": "https://github.com/web-part/server.git"
   },
   "dependencies": {
-    "@definejs/file": "^1.0.0",
     "@definejs/object": "^1.1.0",
-    "@definejs/string": "^1.0.0",
-    "@webpart/server-api": "^1.0.4",
-    "@webpart/server-core": "^1.0.0"
+    "@webpart/server-api": "^1.0.6",
+    "@webpart/server-core": "^1.0.3"
   }
 }
