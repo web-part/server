@@ -1,5 +1,6 @@
 
-const colors = require('colors');
+require('colors');
+
 const $Object = require('@definejs/object');
 const Server = require('@webpart/server-core');
 const API = require('./modules/API');
