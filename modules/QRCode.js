@@ -1,23 +1,26 @@
-const API = require('@webpart/server-api');
+const QRCode = require('@webpart/server-qrcode');
+
+
+
 
 
 module.exports = {
 
     start(app, config, { host, port, }) {
-        let opt = config.api;
+        let opt = config.qrcode;
 
         if (!opt) {
             return;
         }
 
-        let api = API.start(app, {
+
+        let qrcode = QRCode.start(app, {
             host,
             port,
             ...opt,
         });
 
-
-        return api;
+        return qrcode;
 
     },
 };

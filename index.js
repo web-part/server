@@ -1,10 +1,12 @@
 
 require('colors');
 
-const $Object = require('@definejs/object');
-const Server = require('@webpart/server-core');
 const API = require('./modules/API');
-
+const Core = require('./modules/Core');
+const Proxy = require('./modules/Proxy');
+const QRCode = require('./modules/QRCode');
+const Session = require('./modules/Session');
+const Static = require('./modules/Static');
 
 
 module.exports = {
@@ -12,29 +14,20 @@ module.exports = {
 
     start(config, done) {
 
-        let core = $Object.filter(config, [
-            'port',
-            'beginPort',
-            'open',
-            'qr',
-            'statics',
-            'proxy',
-        ]);
-
-        let api = config.api;
-        let statics = core.statics = core.statics || {};
-        let htdocs = statics['/'] = statics['/'] || `${__dirname}/htdocs/`;
-
-
-        Server.start(core, function (app, server) {
-            let { port, } = server;
-            let url = API.start(app, port, api);
+        Core.start(config, function (app, server) {
+            Static.use(app, config, server);
+            Proxy.use(app, config);
+           
+            let api = API.start(app, config, server);
+            let session = Session.start(app, config, server);
+            let qrcode = QRCode.start(app, config, server);
 
             done && done(app, {
-                ...server,
-                'api': url,
+                server,
+                api,
+                session,
+                qrcode,
             });
-            
         });
 
 

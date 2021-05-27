@@ -4,7 +4,7 @@
 
 ## 安装
 ``` bash
-npm install --save-dev @webpart/server
+npm install @webpart/server
 ```
 
 ## 示例
@@ -13,28 +13,38 @@ npm install --save-dev @webpart/server
 const server = require('@webpart/server');
 
 const config = {
-    port: 8001, //必选，端口号。
-    open: true, //可选，是否自动打开浏览器。
-
-    //可选。
-    //生成对应的二维码页面。
-    qr: {
-        path: '/qr',    //二维码页面的虚拟地址。
-        size: 10,       //二维码图片的大小。
-    },
+    port: 'auto',       //必选，端口号。
+    beginPort: 3001,    //当 port 为 `auto` 时，开始搜索的端口号。
 
     //可选。
     //要映射生成的静态虚拟目录。
     //支持一对多的关系，会根据目录的添加顺序查找所需的文件。
     statics: {
-        '/': './',
+        '/': './htdocs/',
         '/htdocs': './htdocs/',
-        '/build': './build/',
+        '/build': './output/build/htdocs/',
+        // '/test': [
+        //     './a/',
+        //     './b/',
+        // ],
+    },
 
-        '/test': [ 
-            './a/',
-            './b/',
-        ],
+    session: {
+        file: './output/session.json',
+    },
+
+    api: {
+        api: '/api',
+        sse: '/api/sse',
+        allowCrossOrigin: true,
+        stat: require('./stat'),
+    },
+
+    //可选。
+    //生成对应的二维码页面。
+    qrcode: {
+        path: '/qrcode',    //二维码页面的虚拟地址。
+        size: 10,           //二维码图片的大小。
     },
 
     //可选。
@@ -50,8 +60,10 @@ const config = {
     },
 };
 
-const app = server.start(config, function () {
-    console.log('done.');
+
+//创建服务器并开启。
+server.start(config, function (app, info) {
+    console.log('done.  info=', info);
 });
 
 ```
