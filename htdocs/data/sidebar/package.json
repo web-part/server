@@ -1,6 +1,0 @@
-{
-    "name": "data.Sidebar",
-    "js": [
-        "**/*.js"
-    ]
-}

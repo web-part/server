@@ -3,7 +3,7 @@ const API = require('@webpart/server-api');
 
 module.exports = {
 
-    start(app, config, { host, port, }) {
+    start(app, config, { server, statics, qrcode, session, }) {
         let opt = config.api;
 
         if (!opt) {
@@ -11,9 +11,12 @@ module.exports = {
         }
 
         let api = API.start(app, {
-            host,
-            port,
+            ...server,
             ...opt,
+
+            statics,
+            qrcode,
+            session,
         });
 
 

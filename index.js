@@ -1,6 +1,7 @@
 
 require('colors');
 
+const File = require('@definejs/file');
 const API = require('./modules/API');
 const Core = require('./modules/Core');
 const Proxy = require('./modules/Proxy');
@@ -15,19 +16,30 @@ module.exports = {
     start(config, done) {
 
         Core.start(config, function (app, server) {
-            Static.use(app, config, server);
             Proxy.use(app, config);
-           
-            let api = API.start(app, config, server);
-            let session = Session.start(app, config, server);
+
+            let session = Session.start(app);
+            let statics = Static.use(app, config, server);
             let qrcode = QRCode.start(app, config, server);
 
-            done && done(app, {
-                server,
+            let api = API.start(app, config, { server, statics, qrcode, session, });
+
+            let info = {
+                ...server,
+                statics,
                 api,
-                session,
                 qrcode,
-            });
+                session,
+            };
+           
+
+            let { file, } = config;
+
+            if (file) {
+                File.writeJSON(file, info);
+            }
+
+            done && done(app, info);
         });
 
 
