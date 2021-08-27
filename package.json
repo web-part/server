@@ -1,6 +1,6 @@
 {
   "name": "@webpart/server",
-  "version": "4.3.2",
+  "version": "4.3.4",
   "description": "",
   "main": "index.js",
   "scripts": {},
@@ -15,7 +15,7 @@
   "dependencies": {
     "@definejs/file": "^1.0.0",
     "@webpart/console": "^2.1.0",
-    "@webpart/server-api": "^3.3.0",
+    "@webpart/server-api": "^3.4.0",
     "@webpart/server-core": "^2.0.1",
     "@webpart/server-proxy": "^1.0.0",
     "@webpart/server-qrcode": "^2.0.0",
