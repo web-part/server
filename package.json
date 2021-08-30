@@ -1,6 +1,6 @@
 {
   "name": "@webpart/server",
-  "version": "4.4.1",
+  "version": "4.4.2",
   "description": "用于开发阶段的本地 web 服务器",
   "main": "index.js",
   "scripts": {},
