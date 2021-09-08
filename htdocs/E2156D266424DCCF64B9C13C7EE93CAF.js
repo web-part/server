@@ -10150,12 +10150,12 @@ define('$', function (require, module, exports) {
 */
 define('API', function (require, module, exports) {
     const $API = require('@definejs/api');
-
+    
 
     function API(name, config) {
-        var api = new $API(name, config);
-        var get = api.get.bind(api);
-        var post = api.post.bind(api);
+        let api = new $API(name, config);
+        let get = api.get.bind(api);
+        let post = api.post.bind(api);
 
       
 
@@ -14749,9 +14749,9 @@ define.panel('/FileList/Body/Preview/MarkDoc', function (require, module, panel)
         let format = true;
 
 
-        //以源码方式展示，需要进行 html 编码。
+        //以源码方式展示
         if (opt.type == 'source') {
-            content = Escape.html(content);
+            // content = Escape.html(content); //需要进行 html 编码。
             language = ext.slice(1);
             format = false; //不格式化代码，以保留源格式。
         }
@@ -16274,7 +16274,7 @@ define('/Home/FileList/API', function (require, module, exports) {
                 },
 
                 'fail': function (code, msg, json, xhr) {
-                    definejs.alert('获取文件列表失败: {0}', msg);
+                    definejs.alert(`获取文件列表失败: ${msg}`);
                 },
 
                 'error': function (code, msg, json, xhr) {
@@ -16547,7 +16547,7 @@ define('/Home/JsModule/API', function (require, module, exports) {
                 },
 
                 'fail': function (code, msg, json, xhr) {
-                    definejs.alert('获取统计数据失败: {0}', msg);
+                    definejs.alert(`获取统计数据失败: ${msg}`);
                 },
 
                 'error': function (code, msg, json, xhr) {
@@ -16737,7 +16737,7 @@ define('/Home/Project/API', function (require, module, exports) {
                 },
 
                 'fail': function (code, msg, json, xhr) {
-                    definejs.alert(`获取项目信息失败: $${msg}`);
+                    definejs.alert(`获取项目信息失败: ${msg}`);
                 },
 
                 'error': function (code, msg, json, xhr) {
@@ -16899,14 +16899,17 @@ define.panel('/Home/Project', function (require, module, panel) {
 
 define('/Home/Server/API', function (require, module, exports) {
     const Emitter = require('@definejs/emitter');
-    
+    const Toast = require('@definejs/toast');
     const API = require('API');
-
 
     let emitter = new Emitter();
 
-
-
+    let toast = new Toast({
+        icon: 'ban',
+        mask: 0.5,
+        width: 200,
+        text: '禁止访问该域名',
+    });
 
     return {
         on: emitter.on.bind(emitter),
@@ -16922,6 +16925,7 @@ define('/Home/Server/API', function (require, module, exports) {
             api.on({
                 'request': function () {
                     // loading.show('加载中...');
+                    toast.hide();
                 },
 
                 'response': function () {
@@ -16934,11 +16938,16 @@ define('/Home/Server/API', function (require, module, exports) {
                 },
 
                 'fail': function (code, msg, json, xhr) {
-                    definejs.alert(`获取服务器信息失败: $${msg}`);
+                    definejs.alert(`获取服务器信息失败: ${msg}`);
                 },
 
-                'error': function (code, msg, json, xhr) {
-                    definejs.alert('获取服务器信息错误: 网络繁忙，请稍候再试');
+                'error': function (xhr) {
+                    if (xhr.status == 403) {
+                        toast.show();
+                    }
+                    else {
+                        definejs.alert('获取服务器信息错误: 网络繁忙，请稍候再试');
+                    }
                 },
             });
 
@@ -17080,7 +17089,7 @@ define('/Home/Server/Status', function (require, module, exports) {
 
     let emitter = new Emitter();
     let toast = new Toast({
-        icon: 'ban',
+        icon: 'times',
         mask: 0.25,
         width: 200,
         text: '服务器已停止运行',
@@ -17108,10 +17117,10 @@ define('/Home/Server/Status', function (require, module, exports) {
         /**
         * 
         */
-        test: function () {
+        test: function (server) {
             let url = Query.add(`${config.url}sse/Terminal.exec`, {
-                cmd: 'pwd',
-                args: '[]',
+                cmd: 'echo',
+                args: JSON.stringify(['hello']),
             });
 
             let status = true;
@@ -17130,7 +17139,7 @@ define('/Home/Server/Status', function (require, module, exports) {
                 }
                 else {
                     // true --> false
-                    toast.show('服务器已停止运行');
+                    toast.show();
                     emitter.fire('close');
                 }
 
@@ -17196,8 +17205,9 @@ define.panel('/Home/Server', function (require, module, panel) {
             'get': function (data) {
                 Loading.hide();
                 Main.render(data);
+                Status.test(data);
 
-                Status.test('pwd');
+                panel.fire('get', [data]);
             },
         });
 
@@ -17220,6 +17230,10 @@ define.panel('/Home/Server', function (require, module, panel) {
 
     });
 
+    return {
+        
+    };
+
 });
 
 
@@ -17232,18 +17246,21 @@ define.view('/Home', function (require, module, view) {
 
     view.on('init', function () {
 
-
+        Server.on({
+            'get': function (data) {
+                Project.render();
+                JsModule.render();
+                FileList.render();
+            },
+        });
 
     });
 
 
     view.on('render', function () {
-
-
-        JsModule.render();
-        FileList.render();
-        Project.render();
+        
         Server.render();
+
 
     });
 

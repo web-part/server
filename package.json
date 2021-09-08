@@ -1,10 +1,14 @@
 {
   "name": "@webpart/server",
-  "version": "4.4.4",
-  "description": "用于开发阶段的本地 web 服务器",
+  "version": "4.5.0",
+  "description": "用于开发阶段的本地 web 服务器，提供可视化管理界面",
   "main": "index.js",
   "scripts": {},
-  "keywords": ["webserver", "webpart", "devserver"],
+  "keywords": [
+    "webserver",
+    "webpart",
+    "devserver"
+  ],
   "author": "micty",
   "email": "mictydeng@qq.com",
   "license": "MIT",
@@ -15,7 +19,7 @@
   "dependencies": {
     "@definejs/file": "^1.0.0",
     "@webpart/console": "^2.1.0",
-    "@webpart/server-api": "^3.5.0",
+    "@webpart/server-api": "^3.6.0",
     "@webpart/server-core": "^2.0.1",
     "@webpart/server-proxy": "^1.0.0",
     "@webpart/server-qrcode": "^2.0.0",
