@@ -68,10 +68,6 @@
             // url: 'http://localhost:8000/api/',
             // url: `http://localhost:${location.port}/api/`,
             url: `${location.origin}/api/`,
-
-        },
-
-        'Proxy': {
             base: 'api/',
         },
 
