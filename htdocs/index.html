@@ -15,7 +15,7 @@
 
   
 
-    <link rel="stylesheet" href="style/css/57DF35C9426473A097A9B0A11B8B280C.css" />
+    <link rel="stylesheet" href="style/css/352CAFB954274C7A73D0D45C87B128BD.css" />
 
 </head>
 
@@ -171,7 +171,6 @@
                                         <h1><i class="fa fa-folder"></i>目录树</h1>
                                     </li>
                                     
-                                    <li data-id="chk-file"></li>
                                     <li data-id="chk-icon"></li>
                                     <li data-id="chk-tab"></li>
                                     <li data-id="chk-color"></li>
@@ -356,7 +355,83 @@
                 <div data-view="/Home" class="view" style="display: none;">
                     
                     
-                    <div data-panel="/Home/Server" class="box ">
+                    <div data-panel="/Home/Project" class="box">
+                        <header>
+                            <span>项目</span>
+                            <i data-cmd="refresh" class="fas fa-sync" title="刷新当前模块"></i>
+                        </header>
+                        <div data-panel="/Home/Project/Loading" class="loading">
+                            <p>
+                                <i class="fas fa-sync-alt"></i>
+                                <span>加载中...</span>
+                            </p>
+                        </div>
+                        <div data-panel="/Home/Project/Main" style="display: none;">
+                            <template name="table">
+                                <table>
+                                    <tbody>
+                                        <tr class="status">
+                                            <th>监控状态</th>
+                                            <td>
+                                                <i class="{status} far fa-{status}-circle"></i>{statusText}
+                                            </td>
+                                        </tr>
+                                        <tr class="name">
+                                            <th>项目名称</th>
+                                            <td>{name}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>版本号</th>
+                                            <td>{version}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>项目描述</th>
+                                            <td>{description}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>项目仓库</th>
+                                            <td>
+                                                <a href="{repositoryHref}" target="_blank">{repositoryUrl}</a>
+                                            </td>
+                                        </tr>
+                                        <tr class="italic">
+                                            <th>关键词</th>
+                                            <td>{keywords}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>作者姓名</th>
+                                            <td>{author}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>作者邮箱</th>
+                                            <td>{email}</td>
+                                        </tr>
+                                        <tr class="cwd">
+                                            <th>工作目录</th>
+                                            <td>{cwd}</td>
+                                        </tr>
+                                        
+                                        
+                                        <tr class="">
+                                            <th>启动时间</th>
+                                            <td>{time}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>进程 ID</th>
+                                            <td>{pid}</td>
+                                        </tr>
+                                        <tr class="italic">
+                                            <th>参数列表</th>
+                                            <td>{argv}</td>
+                                        </tr>
+                                        
+                                    </tbody>
+                                </table>
+                            </template>
+                            
+                        </div>
+                    </div>
+                    <div data-panel="/Home/Server" class="box blue">
                         <header>
                             <span>服务器</span>
                             <i data-cmd="refresh" class="fas fa-sync" title="刷新当前模块"></i>
@@ -429,82 +504,6 @@
                                                 </ul>
                                             </td>
                                         </tr>
-                                    </tbody>
-                                </table>
-                            </template>
-                            
-                        </div>
-                    </div>
-                    <div data-panel="/Home/Project" class="box cyan">
-                        <header>
-                            <span>项目</span>
-                            <i data-cmd="refresh" class="fas fa-sync" title="刷新当前模块"></i>
-                        </header>
-                        <div data-panel="/Home/Project/Loading" class="loading">
-                            <p>
-                                <i class="fas fa-sync-alt"></i>
-                                <span>加载中...</span>
-                            </p>
-                        </div>
-                        <div data-panel="/Home/Project/Main" style="display: none;">
-                            <template name="table">
-                                <table>
-                                    <tbody>
-                                        
-                                        <tr class="name">
-                                            <th>项目名称</th>
-                                            <td>{name}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>版本号</th>
-                                            <td>{version}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>项目描述</th>
-                                            <td>{description}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>项目仓库</th>
-                                            <td>
-                                                <a href="{repositoryHref}" target="_blank">{repositoryUrl}</a>
-                                            </td>
-                                        </tr>
-                                        <tr class="italic">
-                                            <th>关键词</th>
-                                            <td>{keywords}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>作者姓名</th>
-                                            <td>{author}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>作者邮箱</th>
-                                            <td>{email}</td>
-                                        </tr>
-                                        <tr class="cwd">
-                                            <th>工作目录</th>
-                                            <td>{cwd}</td>
-                                        </tr>
-                                        
-                                        <tr class="status">
-                                            <th>监控状态</th>
-                                            <td>
-                                                <i class="{status} far fa-{status}-circle"></i>{statusText}
-                                            </td>
-                                        </tr>
-                                        <tr class="">
-                                            <th>启动时间</th>
-                                            <td>{time}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>进程 ID</th>
-                                            <td>{pid}</td>
-                                        </tr>
-                                        <tr class="italic">
-                                            <th>参数列表</th>
-                                            <td>{argv}</td>
-                                        </tr>
-                                        
                                     </tbody>
                                 </table>
                             </template>
@@ -1430,7 +1429,7 @@
                                         <tr class="name">
                                             <th>父模块</th>
                                             <td>
-                                                <a href="javascript:" data-cmd="item">{parent}</a>
+                                                <a data-cmd="item">{parent}</a>
                                             </td>
                                         </tr>
                                         <tr class="">
@@ -1457,7 +1456,7 @@
                                 <h1><i class="fa fa-folder"></i>被依赖的模块</h1>
                                 <div data-panel="/ModuleTree/Main/ModuleInfo/Dependents/GridView">
                                     <template name="href">
-                                        <a data-cmd="{cmd}" href="javascript:">{text}</a>
+                                        <a data-cmd="{cmd}">{text}</a>
                                     </template>
                                 </div>
                             </div>
@@ -1466,7 +1465,7 @@
                                 <h1><i class="fa fa-folder"></i>所依赖的公共模块</h1>
                                 <div data-panel="/ModuleTree/Main/ModuleInfo/Publics/GridView">
                                     <template name="href">
-                                        <a data-cmd="{cmd}" href="javascript:" >{text}</a>
+                                        <a data-cmd="{cmd}">{text}</a>
                                     </template>
                                 </div>
                             </div>
@@ -1475,7 +1474,7 @@
                                 <h1><i class="fa fa-folder"></i>所依赖的私有模块</h1>
                                 <div data-panel="/ModuleTree/Main/ModuleInfo/Privates/GridView">
                                     <template name="href">
-                                        <a data-cmd="{cmd}" href="javascript:">{text}</a>
+                                        <a data-cmd="{cmd}">{text}</a>
                                     </template>
                                 </div>
                             </div>
@@ -1485,7 +1484,7 @@
                                 <h1><i class="fa fa-folder"></i>直接子模块</h1>
                                 <div data-panel="/ModuleTree/Main/ModuleInfo/Childs/GridView">
                                     <template name="href">
-                                        <a data-cmd="{cmd}" href="javascript:">{text}</a>
+                                        <a data-cmd="{cmd}">{text}</a>
                                     </template>
                                 </div>
                             </div>
@@ -1494,7 +1493,7 @@
                                 <h1><i class="fa fa-folder"></i>全部子模块</h1>
                                 <div data-panel="/ModuleTree/Main/ModuleInfo/Children/GridView">
                                     <template name="href">
-                                        <a data-cmd="{cmd}" href="javascript:">{text}</a>
+                                        <a data-cmd="{cmd}">{text}</a>
                                     </template>
                                 </div>
                             </div>
@@ -1503,7 +1502,7 @@
                                 <h1><i class="fa fa-folder"></i>兄弟模块</h1>
                                 <div data-panel="/ModuleTree/Main/ModuleInfo/Siblings/GridView">
                                     <template name="href">
-                                        <a data-cmd="{cmd}" href="javascript:">{text}</a>
+                                        <a data-cmd="{cmd}">{text}</a>
                                     </template>
                                 </div>
                             </div>
@@ -1516,7 +1515,7 @@
                                     <h1><i class="fa fa-folder"></i>模块树</h1>
                                 </li>
                                 
-                                <li data-id="chk-secondary"></li>
+                                <li data-id="chk-value"></li>
                                 <li data-id="chk-icon"></li>
                                 <li data-id="chk-tab"></li>
                                 <li data-id="chk-color"></li>
@@ -1552,7 +1551,7 @@
                             <div data-panel="/ModuleTree/Main/List/GridView">
                             
                                 <template name="href">
-                                    <a data-cmd="{cmd}">{text}</a>
+                                    <a data-cmd="{cmd}" data-value="{value}">{text}</a>
                                 </template>
                             
                             </div>
@@ -1580,7 +1579,7 @@
                                             </template>
                                         </header>
                                         <main data-id="main" style="display: none;">
-                                            <p>依赖于 <a data-cmd="id" href="javascript:">{id}</a> 的模块列表：</p>
+                                            <p>依赖于 <a data-cmd="id">{id}</a> 的模块列表：</p>
                                             <div data-id="gridview"></div>
                                         </main>
                                     </li>
@@ -1627,7 +1626,7 @@
                             <div data-panel="/ModuleTree/Main/Pair/GridView">
                             
                                 <template name="href">
-                                    {icon}<a data-cmd="{cmd}">{text}</a>
+                                    {icon}<a data-cmd="{cmd}" data-value="{value}">{text}</a>
                                 </template>
                             
                             </div>
@@ -1943,6 +1942,184 @@
     
     
     
+    <template id="tpl-GridView">
+        <div data-panel="{id}" {class} {dataset} {style} >
+            <header data-panel="{id}/Header">
+               
+            </header>
+    
+            <main data-panel="{id}/Main">
+                
+            </main>
+    
+            <p>
+                <span>{nodata}</span>
+            </p>
+    
+            <footer>
+                <div data-panel="{id}/Pager">
+    
+                </div>
+            </footer>
+        </div>
+    </template>
+    
+    <template id="tpl-MenuTree">
+        <div id="{id}" {class} {dataset} {style}>
+            <template name="root" placeholder="roots">
+                <ul class="root">
+                    {root}
+    
+                    <template name="dir">
+                        <li data-id="{id}" class="item dir {open} {on}" {style}>
+                            <div data-cmd="item">
+                                <i data-cmd="icon-dir" class="icon {icon}"></i>
+                                <span>{name}</span>
+                            </div>
+                            <ul style="{ul-display}">
+                                {items}
+                            </ul>
+                        </li>
+                    </template>
+    
+                    <template name="file">
+                        <li data-id="{id}" class="item file {on}" {style}>
+                            <div data-cmd="item">
+                                <i class="icon {icon}"></i>
+                                <span>{name}</span>
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+        </div>
+    </template>
+    
+    
+    <template id="tpl-Pager">
+        <ul id="{id}" {class} {dataset} {style}>
+            <li data-id="nav" class="nav">
+                <template name="nav" placeholder="nav">
+                    <button data-cmd="prev" {prev-disabled} class="arrow prev" title="上一页">
+                        <i></i>
+                    </button>
+                    
+                    <template name="region" placeholder="regions">
+                        <template name="item">
+                            <button data-no="{no}" class="{on}">{no}</button>
+                        </template>
+                        <template name="more">
+                            <button disabled class="more"></button>
+                        </template>
+                    </template>
+                    
+                    <button data-cmd="next" {next-disabled} class="arrow next" title="下一页">
+                        <i></i>
+                    </button>
+                </template>
+            </li>
+    
+            <li data-id="stat" class="stat">
+                <template name="stat" placeholder="stat">
+                    总<span>{total}</span>条，共<span>{maxNo}</span>页，每页
+                    <select id="{sizerId}">
+                        <template name="size" placeholder="sizes">
+                            <option {selected}>{value}</option>
+                        </template>
+                    </select>
+                </template>
+            </li>
+    
+            <li data-id="jump" class="jump">
+                <template name="jump" placeholder="jump">
+                    <span>跳到：</span>
+                    <input id="{txtId}" type="text" value="{value}" />
+                    <button {disabled} data-cmd="to">GO</button>
+                </template>
+            </li>
+        </ul>
+    </template>
+    
+    
+    
+    
+    <template id="tpl-Table">
+        <table id="{id}" {class} {dataset} {style} >
+            <template name="header" placeholder="header">
+                <thead>
+                    <tr>
+                        <template name="caption" placeholder="captions">
+                            <th id="{id}" {class} {dataset} {title} {style} >{html}</th>
+                        </template>
+                    </tr>
+                </thead>
+            </template>
+            <tbody>
+                <template name="row" placeholder="rows">
+                    <tr id="{id}" {class} {dataset} {title} {style}>
+                        <template name="cell" placeholder="cells">
+                            <td id="{id}" {class} {dataset} {title} {style}>{html}</td>
+                        </template>
+                    </tr>
+                </template>
+            </tbody>
+    
+        </table>
+    
+    </template>
+    
+    
+    
+    <template id="tpl-TableResizer">
+        
+        <template name="colgroup">
+            <colgroup>
+                <template name="col" placeholder="cols">
+                    <col id="{cid}" style="width: {width}px;"/>
+                </template>
+            </colgroup>
+        </template>
+    
+        <template name="resizer">
+            <i id="{id}" class="resizer">
+                <template name="indicator" placeholder="indicator">
+                    <b class="{class}"></b>
+                </template>
+            </i>
+        </template>
+    
+    
+    </template>
+    
+    <template id="tpl-TextTree">
+        <ul id="{id}" {class} {dataset} {style} >
+            <template name="item" placeholder="items">
+                <li id="{id}" {class} {dataset} {style} {title}>{tabs}{linker}{key}</li>
+            </template>
+            <template name="tabs">
+                <span class="tabs">{tabs}</span>
+            </template>
+            <template name="linker">
+                <span class="linker">{linker}</span>
+            </template>
+            <template name="key">
+                <span class="key">
+                    <template name="icon" placeholder="icon">
+                        <span data-cmd="icon" data-id="{id}" class="icon">
+                            <i class="{type} {icon}"></i>
+                        </span>
+                    </template>
+                    <a data-cmd="key" data-id="{id}">{key}</a>
+                    <template name="value" placeholder="value">
+                        <a data-cmd="value" title="{value}" data-id="{id}" class="value">{value}</a>
+                    </template>
+                </span>
+            </template>
+            <template name="b">
+                <b class="{class}">{text}</b>
+            </template>
+        </ul>
+    </template>
     
     <template id="tpl-CheckBox">
         <i class="{class}"></i><span>{text}</span>
@@ -2009,45 +2186,6 @@
         <div id="{tableId}" class="list loading"></div>
         <template name="keyword"><span class="keyword">{keyword}</span></template>
     </template>
-    <template id="tpl-GridView">
-        <div id="{id}" class="GridView {no-footer} {class}" style="width: {sumWidth}px;">
-            <template name="header" placeholder="header">
-                <table id="{headerId}" class="header">
-                    <tr>
-                        <template name="cell" placeholder="cells">
-                            <th data-index="{index}">{caption}</th>
-                        </template>
-                    </tr>
-                </table>
-            </template>
-            <div class="body">
-                <div id="{tableId}" class="table-container"></div>
-                <p id="{nodataId}" class="nodata">无数据</p>
-            </div>
-            
-            <div class="footer">
-                <p id="{counterId}"class="count" title="切换显示已选或正常模式">
-                    <span>
-                        已选<span class="number" id="{countId}">0</span>项
-                    </span>
-                    <span class="mode">(已选模式)</span>
-                </p>
-                <div id="{pagerId}" class="pagerX"></div>
-            </div>
-        </div>
-    
-        <template name="check-all">
-            <span id="{checkAllId}" class="chose-btn check-btn" title="全部选中本页的项"></span>
-        </template>
-    
-        <template name="check-item">
-            <span data-cmd="check-item" class="chose-btn check-btn {checked}"></span>
-        </template>
-    
-      
-    
-    </template>
-    
     
     
     <template id="tpl-MarkDoc">
@@ -2103,35 +2241,6 @@
         </nav>
     </template>
     
-    <template id="tpl-MenuTree">
-        <div id="{id}" class="MenuTree">
-            <template name="root" placeholder="roots">
-                <ul class="root">
-                    {root}
-    
-                    <template name="dir">
-                        <li data-id="{id}" class="item dir {open} {on}">
-                            <div data-cmd="item">
-                                <i data-cmd="icon-dir" class="icon {icon}"></i>{name}
-                            </div>
-                            <ul style="{display}">
-                                {items}
-                            </ul>
-                        </li>
-                    </template>
-    
-                    <template name="file">
-                        <li data-id="{id}" class="item file {on}">
-                            <div data-cmd="item">
-                                <i class="icon {icon}"></i>{name}
-                            </div>
-                        </li>
-                    </template>
-                </ul>
-            </template>
-        </div>
-    </template>
-    
     
     <template id="tpl-Outline">
         <ul class="Outline">
@@ -2146,45 +2255,6 @@
             </template>
         </ul>
     </template>
-    
-    
-    <template id="tpl-Pager">
-        <ul class="Pager">
-            <li class="buttons">
-                <ul>
-                    <li class="LR-button {first-disabled-class}" data-button="previous" title="上一页">
-                        <i class="left-btn"></i>
-                    </li>
-    
-                    <template name="region" placeholder="regions">
-                        <template name="item">
-                            <li class="item {active}" data-no="{no}">{no}</li>
-                        </template>
-                        <template name="more">
-                            <li class="item more"></li>
-                        </template>
-                    </template>
-                    <li class="LR-button {final-disabled-class}" data-button="next" title="下一页">
-                        <i class="right-btn"></i>
-                    </li>
-                </ul>
-            </li>
-            <li class="page-count">
-                总{total}条，共{count}页，每页
-                <select id="{sizerId}" class="select-num">
-                    <template name="size" placeholder="sizes">
-                        <option {selected}>{value}</option>
-                    </template>
-                </select>
-            </li>
-            <li class="page-jump">
-                <span>跳到：</span>
-                <input id="{txtId}" type="text" class="page-number" value="{toNo}" />
-                <a href="javascript:" class="jump-button {jump-disabled-class}" data-button="to">GO</a>
-            </li>
-        </ul>
-    </template>
-    
     
     <template id="tpl-SidebarTree">
         <div data-panel="{id}" class="SidebarTree" style="width: {width}px;">
@@ -2209,70 +2279,6 @@
         </div>
     </template>
     
-    <template id="tpl-Table">
-        <table id="{id}" class="{class}" style="{width}" {attributes}>
-            <tbody>
-                <template name="tr" placeholder="rows">
-                    <tr id="{id}" {class} {attributes} {title}>
-                        <template name="td" placeholder="cells">
-                            <td id="{id}" {class} {attributes} {title} style="{display}">{html}</td>
-                        </template>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
-    </template>
-    
-    <template id="tpl-TableResizer">
-        <template name="resizer">
-            <i id="{id}" class="resizer" style="{display}">
-                <b></b>
-            </i>
-        </template>
-    
-        <template name="colgroup">
-            <colgroup>
-                <template name="col" placeholder="cols">
-                    <col data-index="{index}" width="{width}" style="{display}" />
-                </template>
-            </colgroup>
-        </template>
-    
-    </template>
-    
-    <template id="tpl-TextTree">
-        <ul id="{id}" class="TextTree {hide-icon} {hide-secondary} {hide-tab} {hide-color}">
-            <template name="item" placeholder="items">
-                <li data-index="{index}" data-id="{id}" class="{type}">{tabs}{linker}{key}</li>
-            </template>
-    
-            <template name="tabs">
-                <span class="tabs">{tabs}</span>
-            </template>
-    
-            <template name="linker">
-                <span class="linker">{linker}</span>
-            </template>
-    
-            <template name="b">
-                <b class="{class}">{text}</b>
-            </template>
-    
-            <template name="key">
-                <span class="key">
-                    <template name="icon" placeholder="icon">
-                        <span data-cmd="icon-{type}" data-index="{index}" class="icon">
-                            <i class="{type} {icon}"></i>
-                        </span>
-                    </template>
-                    <a data-cmd="id" title="{id}" data-index="{index}" class="{not-found}">{key}</a>
-                    <template name="secondary" placeholder="secondary">
-                        <a data-cmd="{secondaryKey}" title="{secondary}" data-index="{index}" class="secondary">{secondary}</a>
-                    </template>
-                </span>
-            </template>
-        </ul>
-    </template>
 
     
 
@@ -2289,7 +2295,7 @@
     <script src="2ACA5B005DB8F0CB1A9BC2FE1A956889.js"></script>
 
     
-    <script src="CDD8CCE73C62DD25AAE1C2E32666D661.js"></script>
+    <script src="2CD46FDF0D8E2A40A777411870A671B7.js"></script>
 
 </body>
 

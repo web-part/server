@@ -48,6 +48,9 @@
         '/ModuleTree/Tree/Data',
         '/ModuleTree/Tree',
         '/ModuleTree/Main/ModuleInfo/Base',
+        '/ModuleTree/Main/Tree/Main',
+        '/ModuleTree/Main/List/GridView',
+        '/ModuleTree/Main/Pair/GridView',
     ], {
         none: '(app)',
     });
@@ -114,6 +117,4203 @@ define('data.Sidebar', function (require, module, exports) {
     
 });
 
+
+
+define('GridView/Panel/Data', function (require, module, exports) {
+    
+
+    return {
+        //对总列表数据进行分页。
+        //仅用于组件内部分页的情况。
+        get(list, { no, size, }) {
+            no = no - 1;  //此处的页码从 0 开始。
+
+            let beginIndex = no * size;
+            let endIndex = beginIndex + size;
+            let items = list.slice(beginIndex, endIndex);
+
+            return items;
+
+        },
+    };
+
+});
+
+
+
+
+define('GridView/Panel/Header', function (require, module, exports) {
+    const Panel = require('@definejs/panel');
+    const Table = require('Table');
+    const TableResizer = require('TableResizer');
+ 
+    return function (meta) {
+        let panel = new Panel(`[data-panel="${meta.id}/Header"]`);
+
+        let table = null;
+        let resizer = null;
+
+        
+        panel.on('init', function () {
+
+            table = new Table({
+                'container': panel.$,
+                'fields': meta.fields,
+                'class': '',    //去掉默认的 Table 类名，可避免一些样式冲突。
+            });
+
+            resizer = new TableResizer({
+                'container': `#${table.id}`,
+                'fields': meta.fields,
+            });
+
+
+            table.on('process', {
+                'caption': function (column, info) {
+                    let values0 = meta.emitter.fire('process', 'caption', column.name, [column, info]);
+                    let values1 = meta.emitter.fire('process', 'caption', [column, info]);
+
+                    let html0 = values0.slice(-1)[0]; //以最后一个为准。
+                    let html1 = values1.slice(-1)[0]; //以最后一个为准。
+
+                    if (html0 !== undefined) {
+                        return html0;
+                    }
+
+                    if (html1 !== undefined) {
+                        return html1;
+                    }
+                },
+            });
+
+            table.on('click', {
+                'caption': function (column, info) {
+                    meta.emitter.fire('click', 'caption', column.name, [column, info]);
+                    meta.emitter.fire('click', 'caption', [column, info]);
+                },
+            });
+           
+
+
+            resizer.on({
+                'dblclick': function (column, info) {
+                    resizer.set(info.index, column.field.width);
+                },
+
+                'change': function (column, info) {
+                    panel.fire('resize', [column, info]);
+                },
+            });
+
+        });
+
+
+        /**
+        * 渲染。
+        */
+        panel.on('render', function () {
+            table.render([]);
+            resizer.render();
+        });
+
+        return panel.wrap({
+            get() {
+                let w = table.$.width();
+                return w + 15;
+            },
+        });
+    };
+
+
+
+});
+
+
+define('GridView/Panel/Main', function (require, module, exports) {
+    const Panel = require('@definejs/panel');
+    const Table = require('Table');
+    const TableResizer = require('TableResizer');
+
+    return function (meta) {
+        let panel = new Panel(`[data-panel="${meta.id}/Main"]`);
+
+        let table = null;
+        let resizer = null;
+
+        function make(item, info) {
+          
+            let args = [item, {
+                ...info,
+                'page': meta.page,
+            }];
+
+            return args;
+        }
+
+
+        //初始阶段适合用来绑定事件。
+        panel.on('init', function () {
+
+            let fields = meta.fields.map((field) => {
+                return {
+                    ...field,
+                    dragable: false, //表体不需要生成用于拖拽的 html。
+                };
+            });
+
+            tpl = panel.template();
+
+            table = new Table({
+                'container': panel.$,
+                'fields': fields,
+                'header': false,
+                'meta': true,
+            });
+
+            resizer = new TableResizer({
+                'container': `#${table.id}`,
+                'fields': fields,
+                'class': '',  //这里要去掉默认的 `TableResizer` 类名，可避免一些样式冲突。
+            });
+
+
+            table.on('process', {
+                'row': function (row, info) {
+                    let args = make(row, info);
+                    meta.emitter.fire('process', 'row', args);
+                },
+                'cell': {
+                    '': function (cell, info) {
+                        let args = make(cell, info);
+                        let values0 = meta.emitter.fire('process', 'cell', cell.name, args);
+                        let values1 = meta.emitter.fire('process', 'cell', args);
+                        let html0 = values0.slice(-1)[0]; //以最后一个为准。
+                        let html1 = values1.slice(-1)[0]; //以最后一个为准。
+
+                        if (html0 !== undefined) {
+                            return html0;
+                        }
+
+                        if (html1 !== undefined) {
+                            return html1;
+                        }
+                    },
+                },
+            });
+
+            table.on('click', {
+                '': function (info) {
+                    let args = make(table, info);
+                    meta.emitter.fire('click', 'table', args);
+                },
+
+                'body': function (info) {
+                    let args = make(table, info);
+                    meta.emitter.fire('click', 'body', args);
+                },
+
+                'row': function (row, info) {
+                    let args = make(row, info);
+                    meta.emitter.fire('click', 'row', `${info.no}`, args);
+                    meta.emitter.fire('click', 'row', args);
+                },
+
+                'cell': function (cell, info) {
+                    let args = make(cell, info);
+                    let { element, event, } = info;
+                    let { click, } = cell.column.field; //如 { click: '[data-cmd]', }
+
+                    if (click) {
+                        let target = $(element).find(click).get(0);
+
+                        //单元格里面的子元素触发的。
+                        //符合监听的元素选择规则，则触发。
+                        if (target.contains(event.target)) {
+                            meta.emitter.fire('click', 'cell', cell.name, click, args);
+                        }
+                    }
+
+
+                    meta.emitter.fire('click', 'cell', cell.name, args);
+                    meta.emitter.fire('click', 'cell', args);
+                },
+            });
+
+        });
+
+
+
+        //渲染。
+        panel.on('render', function (list) {
+            table.render(list);
+            if (list.length > 0) {
+                resizer.render();
+            }
+        });
+
+
+        return panel.wrap({
+            setWidth(index, width) {
+                resizer.set(index, width);
+            },
+        });
+    };
+});
+
+
+define('GridView/Panel/Pager', function (require, module, exports) {
+    const Panel = require('@definejs/panel');
+    const Pager = require('Pager');
+
+    return function (meta) {
+        let panel = new Panel(`[data-panel="${meta.id}/Pager"]`);
+        let pager = null;
+
+
+
+        //初始阶段适合用来绑定事件。
+        panel.on('init', function () {
+            pager = new Pager({
+                'container': panel.$,
+            });
+
+            pager.on({
+                'change': function (info) {
+                    panel.fire('change', [info]);
+                },
+            });
+
+        });
+
+
+
+        //渲染。
+        panel.on('render', function (data) {
+            pager.render(data);
+            panel.show();
+        });
+
+
+        return panel.wrap({
+
+        });
+    };
+
+});
+
+
+define('GridView/Template/Class', function (require, module, exports) {
+    
+    return {
+        stringify(data) {
+            if (Array.isArray(data)) {
+                data = data.join(' ');
+            }
+
+            if (!data) {
+                return '';
+            }
+
+            return `class="${data}"`;
+        },
+    };
+});
+define('GridView/Template/DataSet', function (require, module, exports) {
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            let list = Object.keys(data).map((key) => {
+                let value = data[key];
+
+                return `data-${key}="${value}"`;
+            });
+
+            return list.join(' ');
+        },
+    };
+});
+define('GridView/Template/Style', function (require, module, exports) {
+    const Style = require('@definejs/style');
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            data = Style.stringify(data);
+            
+            if (!data) {
+                return '';
+            }
+
+            return `style="${data}"`;
+        },
+    };
+});
+
+/**
+* 
+*/
+define('GridView/Meta', function (require, module, exports) {
+    const IDMaker = require('@definejs/id-maker');
+
+    let idmaker = new IDMaker('GridView');
+
+
+
+
+    return {
+
+        create: function (config, others) {
+            let id = config.id || idmaker.next();
+            
+            let meta = {
+                'id': id,                           //会生成到 DOM 中。
+                'container': config.container,      //容器。
+                'template': config.template,        //使用的 html 模板的对应的 DOM 节点选择器。
+                'class': config.class,              //css 类名。
+                'style': config.style,              //css 样式。
+                'dataset': config.dataset,          //自定义数据集，会在 html 中生成 `data-` 的自定义属性。
+                'nodata': config.nodata,
+                'fields': config.fields,
+
+                'this': null,
+                'emitter': null,
+                'tpl': null,
+                'panel': null,
+                'page': null,   //如果有值，则表示分页。 为了方便在 `process` 事件中传出去，以让外界知道当前的分页信息。
+              
+            };
+
+
+            Object.assign(meta, others);
+
+
+
+            return meta;
+           
+        },
+
+
+    };
+    
+});
+
+
+
+
+
+define('GridView/Panel', function (require, module, exports) {
+    const Panel = require('@definejs/panel');
+
+    return {
+        create(meta) {
+            const Header = module.require('Header')(meta);
+            const Main = module.require('Main')(meta);
+            const Pager = module.require('Pager')(meta);
+            const Data = module.require('Data');
+
+            let panel = new Panel(`[data-panel="${meta.id}"]`);
+
+            let $meta = {
+                page: null, //分页信息。 如果指定，则进行分页。
+                all: null,  //全部列表数据。 如果指定，则在组件内部进行分页。
+            };
+
+
+            //初始阶段适合用来绑定事件。
+            panel.on('init', function () {
+
+                Header.on({
+                    'resize': function (column, info) {
+                        let width = info.sum + 15;
+                        let args = [column, info];
+
+                        panel.$.width(width);
+                        Main.setWidth(info.index, column.width);
+
+                        meta.emitter.fire('resize', column.name, args);
+                        meta.emitter.fire('resize', args);
+                    },
+                });
+
+
+                Pager.on({
+                    'change': function (page) {
+                        //为了方便在 `process` 事件中传出去，以让外界知道当前的分页信息。
+                        meta.page = page; 
+
+                        if ($meta.all) { //内部分页。
+                            let values = meta.emitter.fire('page', [page, $meta.all]);
+                            let list = values.slice(-1)[0] || Data.get($meta.all, page);
+
+                            Main.render(list);
+                        }
+                        else { //外部分页。
+                            //方便外部重新 render() 时可以不传参数 page。
+                            $meta.page = page;    
+                            panel.fire('page', [page, null]);
+                        }
+                    },
+                });
+
+                //表头只需要渲染一次，放此处即可。
+                Header.render();
+
+            });
+
+
+
+            //渲染。
+            panel.on('render', function (list, page) {
+                //第二个是方便在分页时可以不传参数 page。
+                page = page || $meta.page;
+
+                //重置一下，避免受上次 render() 的影响。
+                $meta.page = null;
+                $meta.all = null;
+
+                //指定了 page，则进行分页。
+                //未指定 total，则在组件内部进行分页。
+                if (page && page.total === undefined) {
+                    page = { ...page, };
+                    $meta.all = list;            //此时 list 就是全部的列表数据。
+                    page.total = list.length;   //        
+                    list = Data.get(list, page);//截取分页对应的列表片段。
+                }
+
+                meta.page = page;
+                Main.render(list);
+                Main.$.toggleClass('no-pager', !page);
+                panel.$.toggleClass('no-data', !list.length);
+
+                //只有指定了才分页。
+                if (page) {
+                    Pager.render(page);
+                }
+                
+
+
+                let width = Header.get();
+                panel.$.width(width);
+            });
+
+
+            return panel.wrap({
+
+            });
+
+        },
+    };
+
+});
+
+
+define('GridView/Template', function (require, module, exports) {
+    const Template = require('@definejs/template');
+    const Class = module.require('Class');
+    const DataSet = module.require('DataSet');
+    const Style = module.require('Style');
+
+
+
+    return {
+        create(meta) {
+            let tpl = new Template(meta.template);
+
+            tpl.process({
+                //填充表格。
+                '': function () {
+                    this.fix(['class', 'dataset', 'style',]);
+
+                    let cssClass = Class.stringify(meta.class);
+                    let dataset = DataSet.stringify(meta.dataset);
+                    let style = Style.stringify(meta.style);
+
+                    return {
+                        'id': meta.id,
+                        'class': cssClass,
+                        'dataset': dataset,
+                        'style': style,
+                        'nodata': meta.nodata,
+                    };
+                },
+               
+            });
+
+            return tpl;
+
+        },
+
+    };
+});
+
+define('GridView.defaults', {
+    //组件的 id，会生成到 DOM 元素中。
+    //一般情况下不需要指定，组件内部会自动生成一个随机的。
+    //如果自行指定，请保证在整个 DOM 树中是唯一的。
+    id: '',
+
+    container: '',
+    template: '#tpl-GridView', //
+    class: 'GridView',         //css 类名。
+    style: {},
+    dataset: {},
+    nodata: '暂无数据',
+    fields: [],                 
+
+
+    //是否公开 meta 对象。
+    //如果指定为 true，则外部可以通过 this.meta 来访问。
+    //在某些场合需要用到 meta 对象，但要注意不要乱动里面的成员。
+    meta: false,
+  
+
+    
+});
+
+
+
+/**
+* 带有翻页、固定表头的列表表格展示器组件。
+*/
+define('GridView', function (require, module, exports) {
+    const $ = require('$');
+    const Emitter = require('@definejs/emitter');
+    
+    const Meta = module.require('Meta');
+    const Template = module.require('Template');
+    const Panel = module.require('Panel');
+    
+
+
+
+    let mapper = new Map();
+
+
+    class GridView {
+        constructor(config) {
+            config = Object.assign({}, exports.defaults, config);
+
+            let emitter = new Emitter(this);
+            
+            let meta = Meta.create(config, {
+                'emitter': emitter,         //
+                'this': this,               //方便内部使用。
+            });
+
+            meta.tpl = Template.create(meta);
+            mapper.set(this, meta);
+
+            //指定了公开 meta 对象。
+            if (config.meta) {
+                this.meta = meta;
+            }
+
+            this.id = meta.id;
+            this.$ = meta.$;
+        }
+
+
+        /**
+        * 渲染 HTML 到容器中以生成 DOM 节点。
+        * @param {Array} list 要渲染的列表数据。 
+        * @param {Object} page 分页信息。 
+        *   首次如果指定，则进行分页；否则不生成分页器。
+        *   page = {
+        *       no: 1,          //当前页码。
+        *       size: 20,       //每页大小，即每页显示多少条记录。
+        *       total: 1250,    //总的记录数。 如果不指定此字段，则参数 list 就当作是全部列表数据，并在组件内部进地分页。
+        *   };
+        * @returns 
+        */
+        render(list, page) {
+            let meta = mapper.get(this);
+
+            //首次渲染。
+            if (!meta.panel) {
+                let html = meta.tpl.fill({});
+
+                $(meta.container).html(html);
+                meta.panel = Panel.create(meta);
+
+                this.$ = meta.panel.$;
+            }
+
+            meta.panel.render(list, page);
+
+            
+           
+        }
+
+        /**
+        * 绑定事件。
+        */
+        on(...args) {
+            let meta = mapper.get(this);
+            meta.emitter.on(...args);
+        }
+
+
+
+
+    }
+
+
+
+
+    module.exports = exports = GridView;
+    exports.defaults = require('GridView.defaults');
+
+    
+});
+
+
+
+
+define('$', function (require, module, exports) {
+    return window.jQuery;
+});
+define('MenuTree/Template/Class', function (require, module, exports) {
+    
+    return {
+        stringify(data) {
+            if (Array.isArray(data)) {
+                data = data.join(' ');
+            }
+
+            if (!data) {
+                return '';
+            }
+
+            return `class="${data}"`;
+        },
+    };
+});
+define('MenuTree/Template/DataSet', function (require, module, exports) {
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            let list = Object.keys(data).map((key) => {
+                let value = data[key];
+
+                return `data-${key}="${value}"`;
+            });
+
+            return list.join(' ');
+        },
+    };
+});
+define('MenuTree/Template/Style', function (require, module, exports) {
+    const Style = require('@definejs/style');
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            data = Style.stringify(data);
+            
+            if (!data) {
+                return '';
+            }
+
+            return `style="${data}"`;
+        },
+    };
+});
+
+define('MenuTree/Data', function (require, module, exports) {
+    const IDMaker = require('@definejs/id-maker');
+
+    let idmaker = new IDMaker('MenuTree');
+
+
+    function make(list, parent, context, fn) {
+        if (!list) {
+            return [];
+        }
+        
+
+        list = list.map((item) => {
+            let id = item.id;
+
+            //针对非字符串类型的 id，尝试转成 json 字符串。
+            if (typeof id != 'string') {
+                id = JSON.stringify(id);
+
+                //如果转换后依然不是字符串，则自动分配。
+                if (typeof id != 'string') {
+                    id = idmaker.next('item');
+                }
+            }
+
+            context.cid++;
+
+            let node = {
+                'id': id,
+                'cid': context.cid,
+                'level': 0,
+                'name': item.name ,
+                'open': item.open,
+                'dirIcon': item.dirIcon,
+                'fileIcon': item.fileIcon,
+                'style': item.style,
+                'dataset': item.dataset,
+                'data': item.data,
+                'list': [],
+                'parent': parent || null,
+                'parents': [],      //向上追溯所有的父节点。
+                'children': [],     //全部子节点，包括直接的和间接的。
+
+            };
+
+            node.list = make(item.list, node, context, fn);
+
+
+            //向上追溯找出所有的父节点。
+            exports.trace(node, function (parent) {
+                parent.children.push(node);
+                node.parents.push(parent);
+            });
+
+            node.level = node.parents.length;
+
+            node.children.sort((a, b) => {
+                return a.cid - b.cid;
+            });
+            
+
+            fn(node);
+
+            return node;
+
+        });
+
+        return list;
+    }
+
+
+    return exports = {
+
+        make(list, meta) {
+            let id$item = {};
+            let cid$item = {};
+            let items = [];
+            let context = { cid: 0, };
+
+            list = make(list, null, context, function (node) {
+                id$item[node.id] = node;
+                cid$item[node.cid] = node;
+                items.push(node);
+            });
+            
+
+            let data = { list, items, id$item, cid$item, };
+
+            if (meta) {
+                Object.assign(meta, data);
+            }
+
+            return data;
+
+        },
+
+
+        /**
+        * 向上追溯指定节点的所有父节点直到根节点，迭代执行指定的回调函数。
+        * @param {Object} node 树节点。
+        * @param {function} fn 要执行的回调函数。
+        */
+        trace(node, fn) {
+            let parent = node.parent;
+
+            if (!parent) {
+                return;
+            }
+
+            fn(parent);
+
+            exports.trace(parent, fn);
+        }
+       
+    };
+
+});
+
+
+
+define('MenuTree/Events', function (require, module, exports) {
+    const $ = require('$');
+
+    function toggleOpen(meta, item, $li) {
+        let $icon = $li.find('> div > i[data-cmd="icon-dir"]');
+        let $ul = $li.children('ul');
+        let open = item.open = !item.open;
+        let cmd = open ? 'open' : 'close';
+        let dirIcon = item.dirIcon || meta.dirIcon;
+
+        if (open) {
+            $icon.removeClass(dirIcon.close);
+            $icon.addClass(dirIcon.open);
+            $ul.slideDown('fast');
+
+        }
+        else {
+            $icon.removeClass(dirIcon.open);
+            $icon.addClass(dirIcon.close);
+            $ul.slideUp('fast');
+        }
+
+        $li.toggleClass('open', open);
+        meta.emitter.fire(cmd, [item]);
+
+    }
+
+
+    function activeItem(meta, item, $li) {
+        let { current, } = meta;
+
+        if (current) {
+            meta.$.find(`[data-id="${current.id}"]`).removeClass('on'); //灭掉旧的。
+        }
+
+        $li.addClass('on');
+        meta.current = item;
+    }
+
+
+
+
+    return {
+        bind(meta) {
+
+            //点击菜单项。
+            meta.$.on('click', '[data-cmd="item"]', function (event) {
+                let li = this.parentNode;
+                let { id, } = li.dataset;
+                let item = meta.id$item[id];
+                let isCurrent = item === meta.current;  //是否为当前已激活的节点。
+                let isDir = item.list.length > 0;       //是否为目录。
+                let $li = $(li);
+
+                if (meta.allowActiveDir) { //允许激活目录项。
+
+                    activeItem(meta, item, $li);
+
+                    if (isDir) { //点击的是一个目录。
+                        if (isCurrent) {
+                            toggleOpen(meta, item, $li);
+                        }
+                        else { //点击的不是当前项。
+                            if (!item.open) {
+                                toggleOpen(meta, item, $li);
+                            }
+
+                            meta.emitter.fire('item', [item]);
+                        }
+                    }
+                    else { //点击的是一个文件。
+                        meta.emitter.fire('item', [item]);
+                    }
+                }
+                else { //不允许激活目录项。
+                    if (isDir) { //点击的是一个目录。
+                        toggleOpen(meta, item, $li);
+                    }
+                    else { //点击的是一个文件。
+                        activeItem(meta, item, $li);
+                        meta.emitter.fire('item', [item]);
+                    }
+                }
+
+                this.scrollIntoViewIfNeeded();
+
+            });
+
+
+
+            //点击目录的图标。
+            meta.$.on('click', '[data-cmd="icon-dir"]', function (event) {
+                event.stopPropagation();
+
+                let li = this.parentNode.parentNode;
+                let { id, } = li.dataset;
+                let item = meta.id$item[id];
+                let $li = $(li);
+
+
+                toggleOpen(meta, item, $li);
+
+
+            });
+        },
+
+    };
+});
+
+/**
+* 
+*/
+define('MenuTree/Meta', function (require, module, exports) {
+    const IDMaker = require('@definejs/id-maker');
+
+    let idmaker = new IDMaker('MenuTree');
+
+
+
+    return {
+
+        create(config, others) {
+            let id = idmaker.next();
+            
+            let meta = {
+                'id': id,                           //实例 id，会生成到 DOM 元素中。
+
+                'container': config.container,      //表格的容器。
+                'template': config.template,        //使用的 html 模板的对应的 DOM 节点选择器。
+                'class': config.class,              //css 类名。
+                'style': config.style,              //css 样式。
+                'dataset': config.dataset,          //自定义数据集，会在 html 中生成 `data-` 的自定义属性。
+                'dirIcon': config.dirIcon,
+                'fileIcon': config.fileIcon,
+                'allowActiveDir': config.allowActiveDir,    //
+
+                '$': null,
+                'this': null,
+                'emitter': null,
+                'tpl': null,
+
+               
+                'list': [],         //
+                'items': [],        //list 的一维数组。
+                'id$item': {},      //id 作为主键关联到项。
+                'cid$item': {},     //cid 作为主键关联到项。
+
+                'current': null,       //当前激活的节点 item。
+            };
+
+
+            Object.assign(meta, others);
+
+
+
+            return meta;
+           
+        },
+
+
+    };
+    
+});
+
+
+
+
+
+define('MenuTree/Template', function (require, module, exports) {
+    const Template = require('@definejs/template');
+    const Class = module.require('Class');
+    const DataSet = module.require('DataSet');
+    const Style = module.require('Style');
+   
+
+
+
+
+
+    return {
+        create(meta) {
+           
+            let tpl = new Template(meta.template);
+
+            function fill(item, index) {
+                let isDir = item.list.length > 0;
+                let name = isDir ? 'dir' : 'file';
+                let html = tpl.fill('root', name, item);
+
+                return html;
+            }
+
+            function getName(item) {
+                //让外面有机会自定义要展示的 name。
+                let names = meta.emitter.fire('fill', 'name', [item]);
+                let name = names.slice(-1)[0];
+
+                if (name === undefined) {
+                    name = item.name;
+                }
+
+                return name;
+            }
+
+            tpl.process({
+                '': function () {
+
+                    this.fix(['class', 'dataset', 'style',]);
+
+                    let cssClass = Class.stringify(meta.class);
+                    let dataset = DataSet.stringify(meta.dataset);
+                    let style = Style.stringify(meta.style);
+                    let roots = this.fill('root', meta.list);
+
+                    return {
+                        'id': meta.id,
+                        'class': cssClass,
+                        'dataset': dataset,
+                        'style': style,
+                        'roots': roots,
+                    };
+                   
+                },
+
+                'root': {
+                    '': function (item, index) {
+                        
+                        let root = fill(item);
+
+                        return {
+                            'root': root,
+                        };
+                        
+                    },
+
+                    'dir': function (item) {
+                        this.fix(['dataset', 'style',]);
+
+                        let { current, } = meta;
+                        let { open, id, } = item;
+                        let items = item.list.map(fill);
+                        let dirIcon = item.dirIcon || meta.dirIcon;
+                        let style = Style.stringify(item.style);
+                        let dataset = DataSet.stringify(item.dataset);
+
+                        if (typeof dirIcon == 'string') {
+                            dirIcon  = {
+                                'close': dirIcon,
+                                'open': dirIcon,
+                            };
+                        }
+
+                        let name = getName(item);
+
+                        return {
+                            'id': id,
+                            'name': name || '',
+                            'open': open ? 'open' : '',
+                            'on': current && id == current.id ? 'on' : '',
+                            'style': style,
+                            'dataset': dataset,
+                            'ul-display': open ? 'display: block;' : 'display: none;',
+                            'icon': open ? dirIcon.open : dirIcon.close,
+                            'items': items,
+                        };
+                    },
+
+                    'file': function (item, index) {
+                        this.fix(['dataset', 'style',]);
+
+                        let { current, } = meta;
+                        let { id, fileIcon, } = item;
+
+                        let name = getName(item);
+                        let style = Style.stringify(item.style);
+                        let dataset = DataSet.stringify(item.dataset);
+
+
+                        return {
+                            'id': id,
+                            'name': name,
+                            'icon': fileIcon || meta.fileIcon,
+                            'on': current && id == current.id ? 'on' : '',
+                            'style': style,
+                            'dataset': dataset,
+                        };
+                    },
+                },
+            });
+
+
+
+
+            return tpl;
+
+        },
+
+    };
+});
+
+define('MenuTree.defaults', {
+    //组件的 id，会生成到 DOM 元素中。
+    //一般情况下不需要指定，组件内部会自动生成一个随机的。
+    //如果自行指定，请保证在整个 DOM 树中是唯一的。
+    id: '',
+
+    container: '',
+    template: '#tpl-MenuTree', //
+    class: 'MenuTree',         //css 类名。
+    style: {},
+    dataset: {},
+    //是否公开 meta 对象。
+    //如果指定为 true，则外部可以通过 this.meta 来访问。
+    //在某些场合需要用到 meta 对象，但要注意不要乱动里面的成员。
+    meta: false,
+
+    //是否允许激活目录项。
+    //如果指定为 false，则目录项只能给展开或收起，而不能被激活。
+    allowActiveDir: true,
+
+    //目录图标。
+    dirIcon: {
+        close: 'fa fa-folder',
+        open: 'fa fa-folder-open',
+    },
+
+    //文件图标。
+    fileIcon: 'fas fa-file-alt',
+
+});
+
+/**
+* 菜单树。
+*/
+define('MenuTree', function (require, module, exports) {
+    const Emitter = require('@definejs/emitter');
+    const $ = require('$');
+    const Data = module.require('Data');
+    const Events = module.require('Events');
+    const Meta = module.require('Meta');
+    const Template = module.require('Template');
+
+   
+    const mapper = new Map();
+
+
+
+    class MenuTree {
+        /**
+        * 构造器。
+        * @param {*} config 
+        */
+        constructor(config) {
+            config = Object.assign({}, exports.defaults, config);
+
+            let emitter = new Emitter(this);
+            
+            let meta = Meta.create(config, {
+                'this': this,
+                'emitter': emitter,
+            });
+
+            meta.tpl = Template.create(meta);
+            mapper.set(this, meta);
+
+            //指定了公开 meta 对象。
+            if (config.meta) {
+                this.meta = meta;
+            }
+
+            this.id = meta.id;
+        }
+
+        /**
+        * 渲染 HTML 到容器中以生成 DOM 节点。
+        * @returns
+        */
+        render(list = []) {
+            let meta = mapper.get(this);
+
+            //已渲染。
+            if (meta.$) {
+                if (list.length > 0) {
+                    this.update(list);
+                }
+
+                return;
+            }
+
+            //首次渲染。
+            Data.make(list, meta);
+
+            let html = meta.tpl.fill({}); //填充全部。
+
+            $(meta.container).html(html);
+            meta.$ = this.$ = $(`#${meta.id}`);
+            Events.bind(meta);
+
+        }
+
+        /**
+        * 更新数据。
+        */
+        update(list) {
+            let meta = mapper.get(this);
+
+            Data.make(list, meta);
+
+            let html = meta.tpl.fill('root', meta.list);
+
+            meta.$.html(html);
+        }
+
+        /**
+        * 打开指定的节点。
+        * 这会连同它的所有父节点也一起展开。
+        * 已重载 open(id);
+        * 已重载 open(cid);
+        */
+        open(id) {
+            let meta = mapper.get(this);
+            let item = null;
+
+            if (typeof id == 'string') {
+                item = meta.id$item[id];
+
+                if (!item) {
+                    throw new Error(`不存在 id 为 '${id}' 的节点`);
+                }
+            }
+            else if (typeof id == 'number') {
+                item = meta.cid$item[id];
+                if (!item) {
+                    throw new Error(`不存在 cid 为 '${id}' 的节点`);
+                }
+            }
+            else {
+                throw new Error(`无法识别的参数 id。`);
+            }
+
+            item.open = true;
+
+            //向父节点追溯，更改 open 状态。
+            //即：只要当前节点是打开状态，则它所有的父节点都要设置为打开状态。
+            Data.trace(item, function (parent) {
+                parent.open = true;
+            });
+
+            this.render(meta.list);
+
+            //是一个目录，则先假设是折叠的。
+            if (item.list.length > 0) {
+                item.open = false;
+            }
+
+            let $li = item.$ = item.$ || meta.$.find(`li[data-id="${item.id}"]`);
+            $li.find(`>[data-cmd="item"]`).trigger('click');
+
+        }
+
+        /**
+        * 绑定事件。
+        */
+        on(...args) {
+            let meta = mapper.get(this);
+            meta.emitter.on(...args);
+        }
+
+    }
+
+
+    module.exports = exports = MenuTree;
+    exports.defaults = require('MenuTree.defaults');
+
+});
+define('Pager/Template/Class', function (require, module, exports) {
+    
+    return {
+        stringify(data) {
+            if (Array.isArray(data)) {
+                data = data.join(' ');
+            }
+
+            if (!data) {
+                return '';
+            }
+
+            return `class="${data}"`;
+        },
+    };
+});
+define('Pager/Template/DataSet', function (require, module, exports) {
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            let list = Object.keys(data).map((key) => {
+                let value = data[key];
+
+                return `data-${key}="${value}"`;
+            });
+
+            return list.join(' ');
+        },
+    };
+});
+
+
+define('Pager/Template/Regions', function (require, module, exports) {
+    const $Array = require('@definejs/array');
+
+    /**
+    * 根据总页数和当前页计算出要填充的区间。
+    * @param {number} maxNo 总页数。
+    * @param {number} no 当前激活的页码。
+    * @return {Array} 返回一个区间描述的数组。
+    */
+    function get({ maxNo, no, }) {
+        //10 页以内。
+        if (maxNo <= 10) {
+            return [{ 'from': 1, 'to': maxNo, 'more': false, }];
+        }
+
+        //超过 10 页。
+
+
+        if (no <= 3) {
+            return [{ 'from': 1, 'to': 5, 'more': true, }];
+        }
+
+        if (no <= 5) {
+            return [{ 'from': 1, 'to': no + 2, 'more': true, }];
+        }
+
+        if (no >= maxNo - 1) {
+            return [
+                { 'from': 1, 'to': 2, 'more': true, },
+                { 'from': maxNo - 5, 'to': maxNo, 'more': false, },
+            ];
+        }
+
+        return [
+            { 'from': 1, 'to': 2, 'more': true, },
+            { 'from': no - 2, 'to': no + 2, 'more': no + 2 != maxNo, },
+        ];
+    }
+
+    return {
+        /**
+        * 根据总页数和当前页计算出要填充的区间。
+        * @param {number} maxNo 总页数。
+        * @param {number} no 当前激活的页码。
+        * @return {Array} 返回一个区间数组。
+        */
+        make({ maxNo, no, }) {
+            let list = get({ maxNo, no, });
+
+            list = list.map((item) => {
+                let { from, to, more, } = item;
+                let list = $Array.pad(from, to + 1);
+
+                return { list, more, };
+            });
+
+            return list;
+
+        },
+    };
+
+
+
+
+});
+
+
+define('Pager/Template/Style', function (require, module, exports) {
+    const Style = require('@definejs/style');
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            data = Style.stringify(data);
+            
+            if (!data) {
+                return '';
+            }
+
+            return `style="${data}"`;
+        },
+    };
+});
+
+
+define('Pager/Events', function (require, module, exports) {
+
+    
+    return {
+
+        bind: function (meta) {
+            
+            function jump() {
+                let txt = document.getElementById(meta.txtId);
+                let no = +txt.value;
+
+                if (no != meta.no) {
+                    meta.this.to(no);
+                }
+
+            }
+
+            //点击上一页。
+            meta.$.on('click', '[data-cmd="prev"]', function () {
+                meta.this.jump(-1);
+            });
+
+            //点击页码。
+            meta.$.on('click', '[data-no]', function () {
+                let { no, } = this.dataset;
+                no = Number(no);
+
+                if (no != meta.no) {
+                    meta.this.to(no);
+                }
+            });
+
+            //点击下一页。
+            meta.$.on('click', '[data-cmd="next"]', function () {
+                meta.this.jump(1);
+            });
+
+            //点击 GO。
+            meta.$.on('click', '[data-cmd="to"]', function () {
+                jump();
+            });
+
+            //点击每页大小。
+            //更改了分页的大小，要全部重算。
+            meta.$.on('change', `#${meta.sizerId}`, function () {
+                let index = this.selectedIndex;
+
+                meta.size = meta.sizes[index];
+                meta.this.to(1);
+            });
+
+            //自动选中文本框内的值，方便用户快速修改。
+            meta.$.on('focus', `#${meta.txtId}`, function (event) {
+                console.log('focus')
+                let txt = document.getElementById(meta.txtId);
+                txt.select();
+            });
+
+
+            //页面输入框中的键盘过滤。
+            meta.$.on('keydown', `#${meta.txtId}`, function (event) {
+                let keyCode = event.keyCode;
+
+                if (keyCode == 13) {
+                    jump();
+                    return;
+                }
+
+                let isNumber =
+                    (48 <= keyCode && keyCode <= 48 + 9) || //主键盘的 0 - 9
+                    (96 <= keyCode && keyCode <= 96 + 9);   //数字键盘的 0 - 9
+
+                let isControl =
+                    keyCode == 8 ||     //回格键。
+                    keyCode == 37 ||    //向左箭头。
+                    keyCode == 39 ||    //向右箭头。
+                    keyCode == 46;      //Delete 键
+
+                //F1 - F12 键。
+                let isFn = 112 <= keyCode && keyCode <= 112 + 11;
+                let isValid = isNumber || isControl || isFn;
+
+                if (!isValid) {
+                    event.preventDefault();
+                    return;
+                }
+
+            });
+
+           
+
+          
+        },
+
+    };
+
+
+});
+
+
+define('Pager/Meta', function (require, module, exports) {
+    const $String = require('@definejs/string');
+
+ 
+
+    return {
+        create(config, more) {
+            let id = config.id || $String.random();
+            let { size, sizes, } = more;
+         
+            let total = config.total || 0;          //总的记录数。
+            let maxNo = Math.ceil(total / size);    //总的页数，计算得到，向上取整。  
+
+            let meta = {
+                'id': id,                           //实例 id，会生成到 DOM 元素中。
+                'txtId': $String.random(),          //会生成到 DOM 元素中。
+                'sizerId': $String.random(),        //会生成到 DOM 元素中。
+
+                'container': config.container,      //表格的容器。
+                'template': config.template,        //使用的 html 模板的对应的 DOM 节点选择器。
+                'class': config.class,              //css 类名。
+                'style': config.style,              //css 样式。
+                'dataset': config.dataset,          //自定义数据集，会在 html 中生成 `data-` 的自定义属性。
+
+                'no': config.no || 1,               //当前页码，从 1 开始。
+                'maxNo': maxNo,                     //总页数，计算得到。
+                'recentNo': 0,                      //上一次的页码。
+                'jumpNo': 0,                        //计算出下次要跳转的页码，填到输入框里。
+                'minNo': config.minNo || 0,         //总页数小于该值时，分页器会隐藏。 如果不指定或指定为 0，则一直显示。
+
+                'total': total,                     //总的记录数。
+                'size': size,                       //分页的大小，即每页的记录数。
+                'sizes': sizes,                     //可供选择的分页大小列表。
+                
+                'emitter': null,                    //事件处理器。
+                'tpl': null,                        //模板实例。
+                'this': null,                       //方便内部使用。
+                '$': null,                          //$('#' + meta.id)
+                '$nav': null,
+                '$stat': null,
+                '$jump': null,
+            };
+
+            Object.assign(meta, more);
+
+            return meta;
+        },
+    };
+
+    
+});
+define('Pager/No', function (require, module, exports) {
+
+    return {
+        //确保 no 落在 [1, maxNo] 之间。
+        normalize(no, maxNo) {
+            if (typeof no != 'number') {
+                throw new Error(`输入的参数页码必须为数字。`);
+            }
+
+            //负数页码，则从后面开始算起。
+            //如 -1 表示倒数第一页，即最后一页。
+            if (no < 0) {
+                no = maxNo + 1 + no;
+            }
+
+            no = Math.max(no, 1);
+            no = Math.min(no, maxNo);
+
+            return no;
+        },
+
+        /**
+        * 
+        * @param {*} total 
+        * @param {*} size 
+        */
+        getMax(total, size) {
+            let maxNo = Math.ceil(total / size); //总的页数，计算得到，向上取整。  
+            return maxNo;
+        },
+
+
+        /**
+        * 根据总页数、当前页和上一页预测出要跳转的页码。
+        * @param {number} maxNo 总页数。
+        * @param {number} no 当前激活的页码。
+        * @param {number} recentNo 上一页的页码。
+        * @return {number} 返回一个跳转的页码。
+        */
+        getJump({ maxNo, no, recentNo, }) {
+            if (maxNo <= 1) { // 0 或 1
+                return maxNo;
+            }
+
+            if (no == maxNo) {
+                return maxNo - 1;
+            }
+
+            let value;
+
+            if (no > recentNo) {
+                value = no + 1;
+            }
+            else {
+                value = no - 1;
+
+                if (value < 1) {
+                    value = 2;
+                }
+            }
+
+            return value;
+
+        },
+    };
+
+    
+});
+
+
+define('Pager/Sizes', function (require, module, exports) {
+
+
+    return {
+
+        parse: function ({ size, sizes, }) {
+            size = size || sizes[0];
+            sizes = [size, ...sizes];
+            sizes = [...new Set(sizes)];
+
+            sizes.sort(function (x, y) {
+                return x > y ? 1 : -1;
+            });
+
+            return { size, sizes, };
+        },
+
+    };
+
+
+});
+
+
+
+
+define('Pager/Template', function (require, module, exports) {
+    const Template = require('@definejs/template');
+    const Regions = module.require('Regions');
+    const Class = module.require('Class');
+    const Style = module.require('Style');
+    const DataSet = module.require('DataSet');
+
+
+    return {
+        create(meta) {
+            let tpl = new Template(meta.template);
+
+            tpl.process({
+                //填充表格。
+                '': function () {
+                    this.fix(['class', 'dataset', 'style',]);
+
+                    let cssClass = Class.stringify(meta.class);
+                    let dataset = DataSet.stringify(meta.dataset);
+                    let style = Style.stringify(meta.style);
+
+                    let nav = this.fill('nav', {});
+                    let stat = this.fill('stat', {});
+                    let jump = this.fill('jump', {});
+                    
+
+                    return {
+                        'id': meta.id,
+                        'class': cssClass,
+                        'dataset': dataset,
+                        'style': style,
+
+                        'nav': nav,
+                        'stat': stat,
+                        'jump': jump,
+                    };
+                },
+
+                'nav': {
+                    '': function () {
+                        this.fix(['prev-disabled', 'next-disabled',]);
+
+                        let regions = Regions.make(meta);
+
+                        regions = this.fill('region', regions);
+                        
+                        return {
+                            'regions': regions,
+                            'prev-disabled': meta.no == Math.min(1, meta.maxNo) ? 'disabled' : '',
+                            'next-disabled': meta.no == meta.maxNo ? 'disabled' : '',
+                        };
+                    },
+
+                    'region': {
+                        '': function (item, index) {
+                            let list = this.fill('item', item.list);
+                            let more = this.fill('more', item);
+                            let html = list + more;
+
+                            return html;
+
+                        },
+
+                        'item': function (no, index) {
+                            return {
+                                'no': no,
+                                'on': no == meta.no ? 'on' : '',
+                            };
+                        },
+
+                        'more': function ({ more, }) {
+                            return more ? {} : '';
+                        },
+                    },
+                },
+
+                'stat': {
+                    '': function () {
+                        let sizes = this.fill('size', meta.sizes);
+
+                        return {
+                            'maxNo': meta.maxNo,
+                            'total': meta.total,
+                            'sizerId': meta.sizerId,
+                            'sizes': sizes,
+                        };
+                    },
+
+                    'size': function (item, index) {
+                        this.fix('selected');
+
+                        return {
+                            'value': item,
+                            'selected': item == meta.size ? 'selected="selected"' : '',
+                        };
+                    },
+                },
+
+                'jump': function () {
+                    this.fix(['disabled',]);
+
+                    return {
+                        'txtId': meta.txtId,
+                        'value': meta.jumpNo,
+                        'disabled': meta.maxNo == 0 ? 'disabled' : '',
+                    };
+                },
+
+                
+            });
+
+            return tpl;
+        },
+    };
+
+
+
+});
+
+
+
+define('Pager.defaults', {
+    //组件的 id，会生成到 DOM 元素中。
+    //一般情况下不需要指定，组件内部会自动生成一个随机的。
+    //如果自行指定，请保证在整个 DOM 树中是唯一的。
+    id: '',
+    container: '',          //组件的容器。
+    template: '#tpl-Pager', //
+    class: 'Pager',         //css 类名。
+    style: {},              //
+    dataset: {},            //
+
+    total: 0,       //总记录数。
+    no: 1,          //当前页码，从 1 开始。
+    size: 20,       //分页的大小，即每页的记录数。
+    minNo: 0,       //总页数小于该值时，分页器会隐藏。 如果不指定或指定为 0，则一直显示。
+    sizes: [10, 20, 50, 100, 200,],      //可供选择的分页大小列表。
+
+    //是否公开 meta 对象。
+    //如果指定为 true，则外部可以通过 this.meta 来访问。
+    //在某些场合需要用到 meta 对象，但要注意不要乱动里面的成员。
+    meta: false,
+
+});
+
+
+
+/**
+* 分页器。 
+*/
+define('Pager', function (require, module, exports) {
+    const $ = require('$');
+    const Emitter = require('@definejs/emitter');
+    const Events = module.require('Events');
+    const Meta = module.require('Meta');
+    const No = module.require('No');
+    const Sizes = module.require('Sizes');
+    const Template = module.require('Template');
+
+    let mapper = new Map();
+
+
+    class Pager {
+        constructor(config) {
+            config = Object.assign({}, exports.defaults, config);
+
+            let emitter = new Emitter(this);
+
+            let { size, sizes, } = Sizes.parse(config);
+
+            let meta = Meta.create(config, {
+                'size': size,
+                'sizes': sizes,
+                'emitter': emitter,         //
+                'this': this,               //方便内部使用。
+            });
+
+            meta.tpl = Template.create(meta);
+            mapper.set(this, meta);
+
+            //指定了公开 meta 对象。
+            if (config.meta) {
+                this.meta = meta;
+            }
+            
+            this.id = meta.id;
+            this.$ = meta.$;
+        }
+
+        /**
+        * 渲染 HTML 到容器中以生成 DOM 节点。
+        */
+        render(opt) {
+            let meta = mapper.get(this);
+            let updated = this.update(opt);
+            
+            if (updated) {
+                return;
+            }
+
+            //首次渲染，全量填充。
+            let html = meta.tpl.fill({});
+
+            $(meta.container).html(html);
+
+            meta.$ = this.$ = $(`#${meta.id}`);
+            meta.$nav = meta.$.find(`[data-id="nav"]`);
+            meta.$stat = meta.$.find(`[data-id="stat"]`);
+            meta.$jump = meta.$.find(`[data-id="jump"]`);
+            meta.$.toggle(meta.maxNo >= meta.minNo);
+
+            Events.bind(meta);
+            
+        }
+
+        /**
+        * 更新组件。
+        * 必须在渲染后才可更新。
+        * @param {object} opt 配置对象。
+        *   opt = {
+        *       total: 0,   //总的记录数。 必须为非负整数。
+        *       size: 0,    //每页的记录数。 必须为正整数。
+        *       no: 0,      //当前页码。 如果为负数，则从后面算始算起。 如：-1 表示倒数第一页，即最后一页。
+        *   };
+        * @returns 
+        */
+        update(opt) {
+            opt = opt || {};
+
+            let meta = mapper.get(this);
+
+            let { size, sizes, } = Sizes.parse({
+                'size': opt.size || meta.size,
+                'sizes': meta.sizes,
+            });
+
+            
+            let total = opt.total === 0 ? 0 : opt.total || meta.total;
+            let maxNo = No.getMax(total, size);
+            let no = opt.no || 1;
+
+            let changes = {
+                'no': no != meta.no,
+                'total': total != meta.total,
+                'size': size != meta.size,
+                'maxNo': maxNo != meta.maxNo,
+            };
+
+            meta.total = total;
+            meta.size = size;
+            meta.maxNo = maxNo;
+            meta.sizes = sizes;
+
+            //下面三句的顺序不要变。
+            meta.recentNo = meta.no;                //用来辅助判断下次要跳转的页码。
+            meta.no = No.normalize(no, meta.maxNo); //每次都需要规范化。
+            meta.jumpNo = No.getJump(meta);         //计算出下次要跳转的页码，填到输入框里。
+
+
+            //尚未渲染。
+            if (!meta.$) {
+                return false;
+            }
+
+
+            let nav = '';
+            let stat = '';
+            let jump = '';
+
+            //total、size、maxNo 发生变化时，要重新渲染 stat，nav、jump。
+            if (changes.total || changes.size || changes.maxNo) {
+                nav = meta.tpl.fill('nav', {});
+                stat = meta.tpl.fill('stat', {});
+                jump = meta.tpl.fill('jump', {});
+            }
+            else if (changes.no) {
+                //no 发生变化时，要重新渲染 nav。
+                nav = meta.tpl.fill('nav', {});
+                // jump = meta.tpl.fill('jump', {});
+                document.getElementById(meta.txtId).value = meta.jumpNo;  //用这句更新粒度会更小。
+            }
+
+            nav && meta.$nav.html(nav);
+            stat && meta.$stat.html(stat);
+            jump && meta.$jump.html(jump);
+
+            meta.$.toggle(meta.maxNo >= meta.minNo);
+
+            return true;
+        }
+
+        /**
+        * 跳转到指定页码的分页。
+        * @param {number} no 要跳转的页码。
+        *   如果为负数，则从后面算始算起。 如：-1 表示倒数第一页，即最后一页。
+        * @example
+        *   pager.to(1);    //跳转到第一页。
+        *   pager.to(2);    //跳转到第二页。
+        *   pager.to(-1);   //跳转到最后一页。
+        *   pager.to(-2);   //跳转到倒数第二页。
+        */
+        to(no) {
+            let meta = mapper.get(this);
+
+            meta.this.render({ no, }); //此处的 no 的范围可能不合法，渲染后会规范成合法的放在 meta.no 里。
+
+            meta.emitter.fire('change', [{
+                'no': meta.no,              //当前页码，从 1 开始。
+                'size': meta.size,          //分页的大小，即每页的记录数。
+                'maxNo': meta.maxNo,        //总页数，计算得到。
+                'recentNo': meta.recentNo,  //上一次的页码。
+                'jumpNo': meta.jumpNo,      //计算出下次要跳转的页码，填到输入框里。
+                'total': meta.total,        //总的记录数。
+                'sizes': meta.sizes,        //可供选择的分页大小列表。
+            }]);
+        }
+
+        /**
+        * 跳转指定的页数（步数）到目标页码。
+        * @param {number} 要跳转的页数（步数），可以为负数。
+        *   如果为正，则向页码增大的方向跳转。 如果目标页码超过最大页码，则取最大页码。
+        *   如果为负数，则向页码减小的方向跳转。 如果目标小于 1，则取 1。
+        * @example
+        *   pager.jump(-1); //跳转到上一页。
+        *   pager.jump(1);  //跳转到下一页。
+        */
+        jump(step) {
+            let meta = mapper.get(this);
+            let no = meta.no + step;
+
+            //这个要加，否则又要从后面开始跳。
+            if (no < 1) {
+                no = 1;
+            }
+
+            this.to(no);
+        }
+
+        /**
+        * 绑定事件。
+        */
+        on(...args) {
+            let meta = mapper.get(this);
+            meta.emitter.on(...args);
+        }
+
+
+
+
+    }
+
+
+
+
+    module.exports = exports = Pager;
+    exports.defaults = require('Pager.defaults');
+
+});
+
+
+define('Table/Meta/Column', function (require, module, exports) {
+    const $String = require('@definejs/string');
+
+    return {
+        create({ field, table, }) {
+            let id = $String.random();      //列 id。
+
+            let column = {
+                'name': field.name,             //列名，编程用的，只读。
+                'caption': field.caption || '', //标题名，会生成到表头的单元格 DOM 元素中。
+                'class': field.class || '',     //css 类名，会生成到表头和表体的单元格 DOM 元素中。
+                'title': field.title || '',     //title 提示，会生成到表头和表体的单元格 DOM 元素中。
+                'dataset': field.dataset || {}, //自定义属性集，会生成到表头和表体的单元格 DOM 元素中。
+                'style': field.style || {},     //css 样式集，会生成到表头和表体的单元格 DOM 元素中。
+                'id': id,                       //列 id，会生成到表头的单元格 DOM 元素中。
+                'type': 'TableColumn',          //类型。
+                'table': table,                 //表格实例的自身，方便业务使用。
+                'cells': [],                    //该列所包含的表体的单元格集合。
+
+                'field': field,                 //此字段只是存着，本组件不使用。 可以在触发事件时让外部使用。
+                'value': null,                  //该列的任意类型的值，由业务层写入，组件内不关注、不使用。
+                'data': {},                     //用户自定义数据的容器。 仅用于给用户存储数据，组件内不关注、不使用。
+            };
+
+
+            return column;
+
+
+        },
+    };
+
+    
+
+});
+
+
+define('Table/Row/Cell', function (require, module, exports) {
+    const $String = require('@definejs/string');
+
+    return {
+        /**
+        * 创建一个表体单元格对应的数据对象。
+        */
+        create({ meta, column, row, no, }) {
+            let id = $String.random();          //单元格 id
+
+            let cell = {
+                'name': column.name,        //列名，编程用，只读。
+                'class': column.class,      //css 类名，会生成到 DOM 元素中。
+                'title': column.title,      //title 提示，会生成到 DOM 元素中。
+                'style': column.style,      //css 样式，会生成到 DOM 元素中。
+                'dataset': column.dataset,  //自定义数据集，会在 DOM 元素中生成 `data-` 开头的自定义属性。
+                'id': id,                   //单元格 id，会生成到 DOM 元素中。
+                'type': 'TableCell',        //类型。
+                'column': column,           //所在的列引用。
+                'row': row,                 //单元格所在的行引用。
+                'table': meta.this,         //表格实例的自身，方便业务使用。
+
+                'value': null,              //该单元格的任意类型的值，由业务层写入，组件内不关注、不使用。
+                'data': {},                 //用户自定义数据的容器。 仅用于给用户存储数据，组件内不关注、不使用。
+            };
+
+            meta.id$cell[id] = cell;
+            row.name$cell[cell.name] = cell;
+            column.cells.splice(no, 0, cell);
+
+            return cell;
+        },
+
+
+    };
+
+});
+
+
+
+define('Table/Template/Caption', function (require, module, exports) {
+
+    return {
+        html(meta, column, index) {
+            let { emitter, } = meta;
+            let { name, caption, } = column;
+            let args = [column, { index, }]; //触发事件用到的参数列表。
+
+            //让外界有机会处理/更改 cell 对象。
+            let values0 = emitter.fire('process', 'caption', name, args);
+            let values1 = emitter.fire('process', 'caption', args);
+
+            let html0 = values0.slice(-1)[0]; //以最后一个为准。
+            let html1 = values1.slice(-1)[0]; //以最后一个为准。
+            let html2 = caption;
+
+            if (html0 !== undefined) {
+                return html0;
+            }
+
+            if (html1 !== undefined) {
+                return html1;
+            }
+
+            if (html2 !== undefined) {
+                return html2;
+            }
+
+            return '';
+        },
+    };
+});
+define('Table/Template/Cell', function (require, module, exports) {
+
+    return {
+        html(meta, cell, index, no) {
+            let { emitter, } = meta;
+            let { name, row, } = cell;
+            let args = [cell, { index, no, }]; //触发事件用到的参数列表。
+
+            //让外界有机会处理/更改 cell 对象。
+            let values0 = emitter.fire('process', 'cell', name, args);
+            let values1 = emitter.fire('process', 'cell', args);
+            let item = row.item || {};
+
+            let html0 = values0.slice(-1)[0]; //以最后一个为准。
+            let html1 = values1.slice(-1)[0]; //以最后一个为准。
+            let html2 = item[name];
+
+            if (html0 !== undefined) {
+                return html0;
+            }
+
+            if (html1 !== undefined) {
+                return html1;
+            }
+
+            if (html2 !== undefined) {
+                return html2;
+            }
+
+            return '';
+        },
+    };
+});
+define('Table/Template/Class', function (require, module, exports) {
+    
+    return {
+        stringify(data) {
+            if (Array.isArray(data)) {
+                data = data.join(' ');
+            }
+
+            if (!data) {
+                return '';
+            }
+
+            return `class="${data}"`;
+        },
+    };
+});
+define('Table/Template/DataSet', function (require, module, exports) {
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            let list = Object.keys(data).map((key) => {
+                let value = data[key];
+
+                return `data-${key}="${value}"`;
+            });
+
+            return list.join(' ');
+        },
+    };
+});
+define('Table/Template/Style', function (require, module, exports) {
+    const Style = require('@definejs/style');
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            data = Style.stringify(data);
+            
+            if (!data) {
+                return '';
+            }
+
+            return `style="${data}"`;
+        },
+    };
+});
+define('Table/Template/Title', function (require, module, exports) {
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            return `title="${data}"`;
+        },
+    };
+});
+
+
+define('Table/Events', function (require, module, exports) {
+
+
+    return {
+        bind(meta) {
+            //整个表格的点击事件。
+            meta.$.on('click', function (event) {
+                let element = this;
+
+                meta.emitter.fire('click', [{ event, element, }]);
+            });
+
+            if (meta.header) {
+                meta.$.on('click', '>thead>tr>th', function (event) {
+                    let id = this.id;
+                    let column = meta.id$column[id];
+
+                    if (!column) {
+                        throw new Error(`不存在 id 为 ${id} 的列记录。`);
+                    }
+
+                    let { columns, } = meta;
+                    let element = this;
+
+                    let index = columns.findIndex((item) => {
+                        return item === column;
+                    });
+                    let args = [column, { event, index, columns, element, }];
+
+                    meta.emitter.fire('click', 'caption', column.name, args);
+                    meta.emitter.fire('click', 'caption', args);
+
+                });
+            }
+
+
+
+            //整个表体的点击事件。
+            meta.$tbody.on('click', function (event) {
+                let element = this;
+
+                meta.emitter.fire('click', 'body', [{ event, element, }]);
+            });
+
+            //表格行的点击事件。
+            meta.$tbody.on('click', '>tr', function (event) {
+                let id = this.id;
+                let row = meta.id$row[id];
+
+                if (!row) {
+                    throw new Error(`不存在 id 为 ${id} 的表格行记录。`);
+                }
+
+                //所在的行号。
+                let no = meta.rows.findIndex((row) => {
+                    return row.id == id;
+                });
+
+                let element = this;
+                let args = [row, { event, no, element, }];
+
+                meta.emitter.fire('click', 'row', `${no}`, args);
+                meta.emitter.fire('click', 'row', args);
+            });
+
+            //单元格的点击事件。
+            meta.$tbody.on('click', '>tr>td', function (event) {
+                let id = this.id;
+                let cell = meta.id$cell[id];
+
+                if (!cell) {
+                    throw new Error(`不存在 id 为 ${id} 的单元格记录。`);
+                }
+
+                //所在的行号。
+                let no = meta.rows.findIndex((row) => {
+                    return row.id == cell.row.id;
+                });
+
+                //所在的列号。
+                let index = cell.row.cells.findIndex((cell) => {
+                    return cell.id == id;
+                });
+
+                let element = this;
+                let args = [cell, { event, no, index, element, }];
+
+                meta.emitter.fire('click', 'cell', cell.name, args);
+                meta.emitter.fire('click', 'cell', args);
+            });
+        }
+
+    };
+
+});
+
+
+
+define('Table/Meta', function (require, module, exports) {
+    const $String = require('@definejs/string');
+    const Column = module.require('Column');
+
+    return {
+        create(config, more) {
+            let id = config.id || $String.random();
+            let name$column = {};
+            let id$column = {};
+
+            let table = more.this;
+
+            let columns = config.fields.map(function (field, index) {
+                let column = Column.create({ field, table, });
+
+                name$column[column.name] = column;
+                id$column[column.id] = column;
+
+                return column;
+            });
+
+
+            let meta = {
+                'id': id,                           //实例 id，会生成到 DOM 元素中。
+               
+                'container': config.container,      //表格的容器。
+                'template': config.template,        //使用的 html 模板的对应的 DOM 节点选择器。
+                'class': config.class,              //css 类名。
+                'style': config.style,              //css 样式。
+                'dataset': config.dataset,          //自定义数据集，会在 html 中生成 `data-` 的自定义属性。
+                'header': config.header,            //是否渲染表头。
+                
+                'columns': columns,                 //所有的列集合。
+                'id$column': id$column,             //用随机 id 关联列。
+                'name$column': name$column,         //命名的列。
+
+                'rows': [],                         //所有的行记录集合。
+                'id$row': {},                       //用随机 id 关联表格行元数据。
+                'id$cell': {},                      //用随机 id 关联单元格元数据。
+
+                'list': [],                         //当前渲染时的列表数据。
+                
+                'emitter': null,                    //
+                'tpl': null,                        //模板实例。
+                '$': null,                          //$(`table`)
+                'this': null,                       //方便内部使用。
+
+                '$tbody': null,                     //$(`tbody`);
+            };
+
+            Object.assign(meta, more);
+
+            
+
+            return meta;
+        },
+    };
+
+    
+});
+
+//表格行。
+define('Table/Row', function (require, module, exports) {
+    const $String = require('@definejs/string');
+    const Cell = module.require('Cell');
+
+
+    return {
+        /**
+        * 创建一个表格行记录的数据对象并插入到行的集合中。
+        */
+        insert(meta, item, no) {
+            let max = meta.rows.length;
+
+            //未指定，或指定的范围不对，则都当成在末尾插入。
+            if (no === undefined || no < 0 || no > max) {
+                no = max;
+            }
+            
+
+            let id = $String.random();  //行 id
+
+            //行结构。
+            let row = meta.id$row[id] = {
+                'type': 'TableRow',     //类型。
+                'item': item,           //当前行的数据记录。
+                'id': id,               //行 id，会生成到 DOM 元素中。
+                'class': '',            //css 类名，会生成到 DOM 元素中。
+                'title': '',            //title 提示，会生成到 DOM 元素中。
+                'dataset': {},          //自定义数据集，会在 DOM 元素中生成 `data-` 开头的自定义属性。
+                'style': {},            //css 样式，会生成到 DOM 元素中。
+                'table': meta.this,     //表格实例的自身，方便业务使用。
+                'name$cell': {},        //命名的单元格集合。
+                'cells': null,          //单元格集合，先占位。
+
+                'value': null,          //该行的任意类型的值，由业务层写入，组件内不关注、不使用。
+                'data': {},             //用户自定义数据的容器。 仅用于给用户存储数据，组件内不关注、不使用。
+            };
+
+            row.cells = meta.columns.map((column) => {
+                let cell = Cell.create({ meta, column, row, no, });
+                return cell;
+            });
+
+            //在指定的位置插入。
+            meta.rows.splice(no, 0, row);
+
+            return { row, no, };
+        },
+
+        /**
+        * 根据索引、行对象或 id 来获取对应的行对象与其与在的索引值。
+        * @param {number|Object|string} item 要获取的行对象对应的索引、行对象或 id 值。
+        *   如果传入的是一个 number，则当成行的索引值。 如果小于 0，则从后面开始算起。
+        *   如果传入的是一个 Object，则当成是行对象并进行引用匹配。
+        *   如果传入的是一个 string，则当成是 id 进行匹配。
+        * @returns {Object} 返回获取到的表格行对象及描述，结构为：
+        *   {
+        *       row: {},    //表格行对象。 获取不到时为空。
+        *       no: 0,      //所在行数组的索引值。 在 row 为空时，此字段值为 -1。
+        *       msg: '',    //错误信息描述。 在 row 为空时，有此字段值。
+        *   }
+        */
+        get(meta, item) {
+            let row = null;
+            let no = -1;
+            let msg = ``;
+
+            switch (typeof item) {
+                //item 为一个索引。
+                case 'number':
+                    //传入负数，则从后面开始算起。
+                    if (item < 0) {
+                        item = meta.rows.length + item; //如 -1 就是最后一项；-2 就是倒数第 2 项。
+                    }
+
+                    row = meta.rows[item]; //可能为空。
+                    no = row ? item : -1;
+                    msg = row ? `` : `不存在索引值为 ${item} 的表格行。`;
+                    break;
+
+                //item 为一个对象。
+                case 'object':
+                    //可能为 -1。
+                    no = meta.rows.findIndex((row) => {
+                        return row === item;
+                    });
+
+                    row = meta.rows[no];
+                    msg = row ? `` : `不存在匹配的表格行。`;
+                    break;
+
+
+                //item 为一个 id。
+                case 'string':
+                    row = meta.id$row[item]; //可能为空。
+                    no = !row ? -1 : meta.rows.findIndex((row) => {
+                        return row.id == item;
+                    });
+                    msg = row ? `` : `不存在 id 为 ${item} 的表格行。`;
+                    break;
+
+            }
+
+            return { row, no, msg, };
+
+        },
+
+
+
+
+    };
+
+});
+
+
+
+
+
+define('Table/Template', function (require, module) {
+    const Template = require('@definejs/template');
+    const Class = module.require('Class');
+    const DataSet = module.require('DataSet');
+    const Cell = module.require('Cell');
+    const Caption = module.require('Caption');
+    const Style = module.require('Style');
+    const Title = module.require('Title');
+
+
+
+    return {
+        create(meta) {
+            let tpl = new Template(meta.template);
+
+            tpl.process({
+                //填充表格。
+                '': function () {
+                    this.fix(['class', 'dataset', 'style',]);
+
+                    let cssClass = Class.stringify(meta.class);
+                    let dataset = DataSet.stringify(meta.dataset);
+                    let style = Style.stringify(meta.style);
+                    let header = this.fill('header', {});
+                    let rows = this.fill('row', meta.rows);
+
+                    return {
+                        'id': meta.id,
+                        'class': cssClass,
+                        'dataset': dataset,
+                        'style': style,
+                        'header': header,
+                        'rows': rows,
+                    };
+                },
+
+                'header': {
+                    '': function () {
+                        if (!meta.header) {
+                            return '';
+                        }
+
+                        let captions = this.fill('caption', meta.columns);
+                        return { captions, };
+                    },
+
+                    'caption': function (column, index) {
+                        this.fix(['class', 'title', 'dataset', 'style',]);
+
+                        //这句在前面。
+                        //会触发事件，让外界有机会处理/更改 cell 对象。
+                        let html = Caption.html(meta, column, index);
+
+                        let cssClass = Class.stringify(column.class);
+                        let title = Title.stringify(column.title);
+                        let dataset = DataSet.stringify(column.dataset);
+                        let style = Style.stringify(column.style);
+
+                        return {
+                            'id': column.id,
+                            'class': cssClass,
+                            'title': title,
+                            'dataset': dataset,
+                            'style': style,
+                            'html': html,
+                        };
+                    },
+
+                },
+
+                
+
+                'row': {
+                    //填充行本身。
+                    '': function (row, no) {
+                        this.fix(['class', 'title', 'dataset', 'style',]);
+
+                        let args = [row, { no, }];
+                        
+                        //让外界有机会去处理/更改 row 对象。
+                        meta.emitter.fire('process', 'row', `${no}`, args);
+                        meta.emitter.fire('process', 'row', args);
+
+                        let cssClass = Class.stringify(row.class);
+                        let title = Title.stringify(row.title);
+                        let dataset = DataSet.stringify(row.dataset);
+                        let style = Style.stringify(row.style);
+                        let cells = this.fill('cell', row.cells, no);
+
+                        return {
+                            'id': row.id,
+                            'class': cssClass,
+                            'title': title,
+                            'dataset': dataset,
+                            'style': style,
+                            'cells': cells,
+                        };
+                    },
+
+                    //填充单元格。
+                    'cell': function (cell, index, no) {
+                        this.fix(['class', 'title', 'dataset', 'style',]);
+
+                        //这句在前面。
+                        //会触发事件，让外界有机会处理/更改 cell 对象。
+                        let html = Cell.html(meta, cell, index, no);
+                        let cssClass = Class.stringify(cell.class);
+                        let title = Title.stringify(cell.title);
+                        let dataset = DataSet.stringify(cell.dataset);
+                        let style = Style.stringify(cell.style);
+
+
+                        return {
+                            'id': cell.id,
+                            'class': cssClass,
+                            'title': title,
+                            'dataset': dataset,
+                            'style': style,
+                            'html': html,
+                        };
+                    },
+                },
+            });
+
+            return tpl;
+
+        },
+
+    };
+
+});
+
+
+
+define('Table.defaults', {
+    //组件的 id，会生成到 DOM 元素中。
+    //一般情况下不需要指定，组件内部会自动生成一个随机的。
+    //如果自行指定，请保证在整个 DOM 树中是唯一的。
+    id: '',    
+    
+    container: '',
+    template: '#tpl-Table', //
+    class: 'Table',         //css 类名。
+    style: {},
+    dataset: {},
+    header: true,           //是否生成表头。 如果指定为 false，则不生成 `<thead></thead>` 表头元素。
+    fields: [],             //列的字段数组。
+
+    //是否公开 meta 对象。
+    //如果指定为 true，则外部可以通过 this.meta 来访问。
+    //在某些场合需要用到 meta 对象，但要注意不要乱动里面的成员。
+    meta: false,            
+
+});
+
+
+/**
+* HTML 表格组件。
+* 提供自定义列、动态生成列表、增加/插入表格行等功能。
+*/
+define('Table', function (require, module, exports) {
+    const $ = require('$');
+    const Emitter = require('@definejs/emitter');
+    const Meta = module.require('Meta');
+    const Row = module.require('Row');
+    const Template = module.require('Template');
+    const Events = module.require('Events');
+
+
+    
+    let mapper = new Map();
+
+
+    class Table {
+        constructor(config) {
+            config = Object.assign({}, exports.defaults, config);
+
+            let emitter = new Emitter(this);
+            let meta = Meta.create(config, {
+                'emitter': emitter,         //
+                'this': this,               //方便内部使用。
+            });
+
+            meta.tpl = Template.create(meta);
+            mapper.set(this, meta);
+
+            //指定了公开 meta 对象。
+            if (config.meta) {
+                this.meta = meta;
+            }
+            
+            this.id = meta.id;
+
+            
+        }
+
+        /**
+        * 渲染 HTML 到容器中以生成 DOM 节点。
+        * @returns 
+        */
+        render(list) {
+            let meta = mapper.get(this);
+
+            //先清空之前可能存在的。
+            this.clear();
+
+            meta.list = list.map((item) => {
+                Row.insert(meta, item);
+                return item;
+            });
+
+
+            //已渲染过。
+            if (meta.$) {
+                let html = meta.tpl.fill('row', meta.rows);
+                meta.$tbody.html(html);
+                return;
+            }
+            
+            //首次渲染。
+            let html = meta.tpl.fill({});
+            $(meta.container).html(html);
+            meta.$ = this.$ = $(`#${meta.id}`);
+            meta.$tbody = meta.$.find('>tbody');
+            Events.bind(meta);
+        }
+
+        /**
+        * 插入一行表格行。
+        * @param {Object} item 要插入的数据行记录，为 list 中的项。
+        * @param {number} [index] 可选，要插入的位置。
+        *   如果不指定，则在末尾插入，此时变成了追加一行。
+        */
+        insert(item, index) {
+            let meta = mapper.get(this);
+            let { row, no, } = Row.insert(meta, item, index);
+            let html = meta.tpl.fill('row', row, no);
+            let max = meta.rows.length - 1;
+
+            if (no == 0) {
+                meta.$tbody.prepend(html);
+            }
+            else if (no == max) {
+                meta.$tbody.append(html);
+            }
+            else {
+                let row = meta.rows[no + 1];
+                $(`#${row.id}`).before(html);
+            }
+
+            meta.emitter.fire('insert', [row, { no, }]);
+
+        }
+
+        /**
+        * 移除一行。
+        * @param {number|string|Object} item 要移除的表格行。
+        *   当传入一个 number 时，则表示该表格行所在的索引。
+        *   当传入一个 string 时，则表示该表格行的 id。
+        *   当传一个 Object 时，则取其 `id` 字段进行匹配。
+        */
+        remove(item, fn) {
+            let meta = mapper.get(this);
+            let { row, no, msg, } = Row.get(meta, item);
+
+            if (!row) {
+                throw new Error(msg);
+            }
+
+            //外面提供了自定义删除方式。
+            if (fn) {
+                fn(row, no, done);
+            }
+            else {
+                done();
+            }
+
+            meta.emitter.fire('remove', [row, { no, }]);
+
+
+            function done() {
+                //从 DOM 中删除。
+                let tr = document.getElementById(row.id);
+                tr.parentNode.removeChild(tr);
+
+                //从数据上删除。
+                meta.rows.splice(no, 1);
+                delete meta.id$row[row.id];
+
+                meta.columns.map(function (column, index) {
+                    column.cells.splice(no, 1);
+                });
+            }
+           
+
+        }
+
+        /**
+        * 把指定的表格行向前或向后移动若干步。
+        * @param {number|string|Object} item 要移动的表格行。
+        *   当传入一个 number 时，则表示该表格行所在的索引。
+        *   当传入一个 string 时，则表示该表格行的 id。
+        *   当传一个 Object 时，则取其 `id` 字段进行匹配。
+        * @param {number} step 要移动的步数。
+        *   如果为 0，则不移动，直接返回。
+        *   如果为正数，则向后移动。
+        *   如果为负数，则向前移动。
+        */
+        move(item, step) {
+            if (step == 0) {
+                return;
+            }
+
+            let meta = mapper.get(this);
+            let { row, no, msg, } = Row.get(meta, item);
+
+            if (!row) {
+                throw new Error(msg);
+            }
+
+            let max = meta.rows.length - 1; //允许的最大索引值。
+            let index = no + step;          //目标索引值。
+
+            index = Math.max(index, 0);   //如果为负数，则取为 0.
+            index = Math.min(index, max); //如果超过最大值，则取为最大值。
+
+            //移动后的位置一样。
+            if (index == no) {
+                return;
+            }
+
+            let targetRow = meta.rows[index];
+            let tr = document.getElementById(row.id);
+
+            //处理数据。
+            meta.rows.splice(no, 1);            //删除原位置的。
+            meta.rows.splice(index, 0, row);    //在目标位置插入。
+
+            //处理 DOM。
+            tr.parentNode.removeChild(tr);
+
+            if (step > 0) {
+                $(`#${targetRow.id}`).after(tr.outerHTML);
+            }
+            else {
+                $(`#${targetRow.id}`).before(tr.outerHTML);
+            }
+
+            meta.emitter.fire('move', [row, { no, index, }]);
+        }
+
+        /**
+        * 清空表格。
+        * 会触发每行单元格和每行表格行的清空事件。
+        * @returns
+        */
+        clear() {
+            let meta = mapper.get(this);
+
+            //无任何数据。
+            if (meta.rows.length == 0) {
+                return;
+            }
+
+            meta.rows.map(function (row) {
+                row.cells.map(function (cell) {
+                    meta.emitter.fire('clear', 'cell', cell.name, [cell]);
+                    meta.emitter.fire('clear', 'cell', [cell]);
+                });
+
+                meta.emitter.fire('clear', 'row', [row]);
+            });
+
+            meta.columns.map(function (column) {
+                column.cells.splice(0); //清空原数组。
+            });
+
+            meta.id$row = {};
+            meta.id$cell = {};
+            meta.rows.splice(0);     //清空原数组。
+            
+            if (meta.$) {
+                meta.$tbody.html('');
+            }
+
+            meta.emitter.fire('clear');
+        }
+
+        /**
+        * 绑定事件。
+        */
+        on(...args) {
+            let meta = mapper.get(this);
+            meta.emitter.on(...args);
+        }
+
+
+
+
+    }
+
+
+
+
+    module.exports = exports = Table;
+    exports.defaults = require('Table.defaults');
+
+});
+
+
+define('TableResizer/Column', function (require, module, exports) {
+    const $String = require('@definejs/string');
+
+   
+
+
+    return {
+
+        /**
+        * 
+        * @param {*} fields 
+        * @returns 
+        */
+        parse(config) {
+            let id$column = {};
+            
+
+            let columns = config.fields.map((field) => {
+                let id = $String.random();
+                let cid = `col-${id}`;
+                let { width, minWidth, maxWidth, dragable, } = field;
+
+                //每一列可以指定自己所允许的最小宽度，如果不指定，则使用全局的。
+                minWidth = typeof minWidth == 'number' ? minWidth : config.minWidth;
+                maxWidth = typeof maxWidth == 'number' ? maxWidth : config.maxWidth;
+
+                dragable = dragable === false ? false : true;
+
+                let column = id$column[id] ={
+                    'id': id,
+                    'cid': cid,
+                    'width': width,
+                    'minWidth': minWidth,   //所允许的最小宽度。 如果为 0，则不限制。
+                    'maxWidth': maxWidth,   //所允许的最大宽度。 如果为 0，则不限制。
+                    'dragable': dragable,   //只有显式指定了为 false 才禁用。
+                    'field': field,         //此字段只是存着，本组件不使用。 可以在触发事件时让外部使用。
+
+                    '$': null,              //$(cid); 只是用来暂存，用到时再去获取。
+                };
+
+
+                return column;
+            });
+
+            return {
+                columns,
+                id$column,
+            };
+        },
+
+
+        /**
+        * 根据索引、列对象或 id 来获取对应的列对象与其与在的索引值。
+        * @param {number|Object|string} item 要获取的列对象对应的索引、列对象或 id 值。
+        *   如果传入的是一个 number，则当成列的索引值。 如果小于 0，则从后面开始算起。
+        *   如果传入的是一个 Object，则当成是列对象进行引用匹配。
+        *   如果传入的是一个 string，则当成是 id 进行匹配。
+        * @returns {Object} 返回获取到的列对象及描述，结构为：
+        *   {
+        *       column: {},     //表格行对象。 获取不到时为空。
+        *       index: 0,       //所在数组的索引值。 在 column 为空时，此字段值为 -1。
+        *       msg: '',        //错误信息描述。 在 column 为空时，有此字段值。
+        *   }
+        */
+        get(meta, item) {
+            let column = null;
+            let index = -1;
+            let msg = ``;
+
+            switch (typeof item) {
+                //item 为一个索引。
+                case 'number':
+                    //传入负数，则从后面开始算起。
+                    if (item < 0) {
+                        item = meta.columns.length + item; //如 -1 就是最后一项；-2 就是倒数第 2 项。
+                    }
+
+                    column = meta.columns[item]; //可能为空。
+                    index = column ? item : -1;
+                    msg = column ? `` : `不存在索引值为 ${item} 的列。`;
+                    break;
+
+                //item 为一个对象。
+                case 'object':
+                    //可能为 -1。
+                    index = meta.columns.findIndex((column) => {
+                        return column === item;
+                    });
+
+                    column = meta.columns[index];
+                    msg = column ? `` : `不存在与传入的对象引用完全相等的列。`;
+                    break;
+
+
+                //item 为一个 id。
+                case 'string':
+                    column = meta.id$column[item]; //可能为空。
+
+                    index = !column ? -1 : meta.columns.findIndex((column) => {
+                        return column.id == item;
+                    });
+                    msg = column ? `` : `不存在 id 为 ${item} 的列`;
+                    break;
+
+            }
+
+            return { column, index, msg, };
+
+        },
+
+    };
+});
+
+define('TableResizer/Events', function (require, module, exports) {
+    const $ = require('$');
+
+    return {
+        bind(meta) {
+            let draging = false;    //表示鼠标左键是否已按下并还没释放。
+            let x = 0;              //鼠标按下时的 pageX 值。
+            let cursor = '';        //鼠标按下时的 cursor 指针值。
+            let width = 0;
+
+            let column = null;
+            let $b = null;
+            let tid = null;
+
+            let $body = $(document.body);
+
+
+            //开始按下鼠标左键。
+            $body.on('mousedown', function (event) {
+                //只针对左键。
+                if (event.which != 1) {
+                    return;
+                }
+
+                column = meta.id$column[event.target.id];
+
+                if (!column) {
+                    return;
+                }
+
+                draging = true;
+                x = event.pageX;
+                width = column.width;
+                cursor = document.body.style.cursor;
+                document.body.style.cursor = 'ew-resize';
+                
+                $b = $(`#${column.id}>b`);
+                $b.html(`${column.width}px`);
+
+                //延迟显示，在双击时显示。
+                //即快速双击时不会显示，长按住时才会显示。
+                tid = setTimeout(function () {
+                    $b.addClass('on');
+                }, 200);
+                
+            });
+
+            //按住鼠标左键进行移动。
+            $body.on('mousemove', function (event) {
+                if (!draging) {
+                    return;
+                }
+
+                //防止按住鼠标左键移动到 body 外面。
+                //再进入时，恢复为松开的状态。
+                if (event.which == 0) {
+                    $body.trigger('mouseup');
+                    return;
+                }
+
+                let dx = event.pageX - x;   //delta width
+                let cw = width + dx;        //cell width
+                let { minWidth, maxWidth, } = column;
+
+                //列宽不能小于指定的最小宽度。
+                if (minWidth > 0 && cw < minWidth) {
+                    return;
+                }
+
+                //列宽不能大于指定的最大宽度。
+                if (maxWidth > 0 && cw > maxWidth) {
+                    return;
+                }
+
+
+                $b.html(`${cw}px`);
+
+                meta.setWidth(column, cw, {
+                    'type': 'drag',
+                    'dx': dx,
+                });
+
+                
+            });
+
+            //释放鼠标左键。
+            $body.on('mouseup', function (event) {
+                if (!draging) {
+                    return;
+                }
+
+        
+
+                clearTimeout(tid); //可能是快速的单击，也取消。
+                draging = false;
+                document.body.style.cursor = cursor;
+                $b.removeClass('on');
+
+                //看看调整完的值是否生效。
+                //如果没生效，则使用实际的宽度。
+                let resizer = document.getElementById(column.id);
+                let cell = resizer.parentNode;
+                let width = cell.offsetWidth;
+
+                if (column.width < width) {
+                    meta.setWidth(column, width, {
+                        'type': 'drag',
+                        'dx': 0,
+                    });
+                }
+
+                //性能起见。
+                column.$ = null;
+                column = null;
+                $b = null;
+                tid = null;
+            });
+
+
+
+            //双击。
+            meta.$.on('dblclick', 'i', function (event) {
+                let column = meta.id$column[event.target.id];
+                if (!column) {
+                    return;
+                }
+
+                let { columns, } = meta;
+
+                let index = columns.findIndex((item) => {
+                    return item === column;
+                });
+                
+                meta.emitter.fire('dblclick', [column, { columns, event, index, }]);
+            });
+
+        },
+    };
+});
+
+
+/**
+* 
+*/
+define('TableResizer/Meta', function (require, module, exports) {
+    const $String = require('@definejs/string');
+
+
+    return {
+
+        create: function (config, more) {
+            let id = $String.random();
+
+            let meta = {
+                'id': id,                       //实例 id，不会生成到 DOM 元素中。
+                'template': config.template,    //使用的 html 模板的对应的 DOM 节点选择器。
+                'class': config.class,          //会添加到 meta.$ 对应的 DOM 元素中。
+                'container': config.container,  //原始的 table 选择器。
+                'indicator': config.indicator,  //是否显示拖动时的列宽指示器。
+                'sumWidth': config.sumWidth,    //是否根据全部列宽的总和给 table 生成总的宽度。
+                
+                'columns': [],
+                'id$column': null,
+
+                '$': null,                      //$(meta.container)
+                'this': null,                   //
+                'emitter': null,                //
+
+            };
+
+            //设置宽度。 
+            //兼做两件事：
+            //  一，设定指定列的宽度。
+            //  二，计算所有列宽的总和，并生成到所在的 table 里。
+            meta.setWidth = function (column, width, info) {
+                let sum = 0;
+
+                if (column) {
+                    column.width = width;
+                    column.$ = column.$ || $(`#${column.cid}`);
+                    column.$.width(width);
+                }
+
+                //计算所有列宽的总和，并生成到所在的 table 里。
+                if (meta.sumWidth) {
+                    sum = meta.columns.reduce((sum, item) => {
+                        sum += item.width;
+                        return sum;
+                    }, 0);
+
+                    meta.$.width(sum);
+                }
+
+                //此时 column 一定有。
+                if (info) {
+                    if (typeof info.index != 'number') {
+                        info.index = meta.columns.findIndex((item) => {
+                            return item === column;
+                        });
+                    }
+
+                    info.columns = meta.columns;
+
+                    if (meta.sumWidth) {
+                        info.sum = sum;
+                    }
+                    
+                    let args = [column, info];
+
+                    meta.emitter.fire('change', column.name, args);
+                    meta.emitter.fire('change', args);
+                }
+            };
+
+            Object.assign(meta, more);
+
+            return meta;
+           
+        },
+
+
+    };
+    
+});
+
+
+
+
+
+define('TableResizer/Template', function (require, module) {
+    const Template = require('@definejs/template');
+
+
+
+
+    return {
+        create: function (meta) {
+            let tpl = new Template(meta.template);
+
+            tpl.process({
+                'colgroup': {
+                    '': function () {
+
+                        let cols = this.fill('col', meta.columns);
+
+                        return {
+                            'cols': cols,
+                        };
+                    },
+
+                    'col': function (column, index) {
+
+                        return {
+                            'cid': column.cid,
+                            'width': column.width,
+                        };
+                    },
+                },
+
+                'resizer': {
+                    '': function (column, index) {
+                        //指定了不可拖拽，则不生成 html。
+                        if (!column.dragable) {
+                            return '';
+                        }
+
+                        let indicator = this.fill('indicator', { index, });
+
+                        return {
+                            'id': column.id,
+                            'indicator': indicator,
+                        };
+                    },
+
+                    'indicator': function ({ index, }) {
+                        if (!meta.indicator) {
+                            return '';
+                        }
+
+                        let maxIndex = meta.columns.length - 1;
+
+                        return {
+                            'class': index == maxIndex ? 'last' : '',
+                        };
+                    },
+
+
+                },
+            });
+
+            return tpl;
+
+        },
+
+    };
+
+});
+
+
+
+define('TableResizer.defaults', {
+    class: 'TableResizer',
+    template: '#tpl-TableResizer',
+    container: null,
+    indicator: true,    //是否显示拖动时的列宽指示器。
+    sumWidth: true,     //是否根据全部列宽的总和给 table 生成总的宽度。
+    minWidth: 30,       //全部列所允许的最小宽度。 可以在针对每列单独设定一个 minWidth。
+    maxWidth: 0,        //全部列所允许的最大宽度。 可以在针对每列单独设定一个 maxWidth。 如果指定为 0，则不限制。
+    fields: [   //列的数组
+        // {
+        //     width: 0,           //列的宽度。 只能是整数的 number 类型。
+        //     minWidth: 0,        //所允许的最小宽度。 优先级比上一级的 minWidth 高。
+        //     maxWidth: 0,        //所允许的最大宽度。 优先级比上一级的 maxWidth 高。 如果指定为 0，则不限制。
+        //     dragable: true,     //是否允许拖拽。 只能明确指定为 false 时才禁用拖拽，否则默认为允许。
+        // },
+    ],
+
+    //是否公开 meta 对象。
+    //如果指定为 true，则外部可以通过 this.meta 来访问。
+    //在某些场合需要用到 meta 对象，但要注意不要乱动里面的成员。
+    meta: false,
+
+});
+
+
+
+define('TableResizer', function (require, module) {
+    const $ = require('$');
+    const Emitter = require('@definejs/emitter');
+    const Meta = module.require('Meta');
+    const Template = module.require('Template');
+    const Events = module.require('Events');
+    const Column = module.require('Column');
+
+    let mapper = new Map();
+
+   
+
+    class TableResizer {
+        constructor(config) {
+            config = Object.assign({}, exports.defaults, config);
+
+            let emitter = new Emitter(this);
+            let info = Column.parse(config); // info = { columns, cid$column, };
+
+            let meta = Meta.create(config, {
+                'this': this,               //方便内部使用。
+                emitter,         //
+                ...info,
+            });
+
+            meta.tpl = Template.create(meta);
+            mapper.set(this, meta);
+
+            //指定了公开 meta 对象。
+            if (config.meta) {
+                this.meta = meta;
+            }
+
+            this.id = meta.id;
+            this.$ = meta.$;
+        }
+
+        /**
+        * 渲染 HTML 到容器中以生成 DOM 节点。
+        * @returns
+        */
+        render() {
+            let meta = mapper.get(this);
+
+            //已渲染过。
+            if (meta.$) {
+                return;
+            }
+
+            meta.$ = this.$ = $(meta.container);
+            meta.$.addClass(meta.class);
+
+            let rows = [...meta.$.get(0).rows];
+            let cells = [...rows[0].cells]; //取表格的第一行。
+
+            //列数可能跟实际不匹配，则进行截断处理。
+            meta.columns = meta.columns.filter((column, index) => {
+                let cell = cells[index];
+                
+                //可能 columns.length > cells.length;
+                //即指定的 fields 元素多于实际要用到的，则只用一部分，多余的部分丢弃掉。
+                if (!cell) {
+                    return false;
+                }
+
+                //columns.length <= cells.length;
+                //则只有部分 cell 能渲染出 resizer，不够的部分则不渲染。
+                let html = meta.tpl.fill('resizer', column, index);
+                $(cell).append(html);
+                
+                return true;
+            });
+
+
+            let html = meta.tpl.fill('colgroup', {});
+            meta.$.prepend(html);
+            meta.setWidth(); //生成总宽度。
+
+            Events.bind(meta);
+        }
+
+        /**
+        * 设置指定列的宽度。
+        * @returns
+        */
+        set(item, width) {
+            let meta = mapper.get(this);
+            let { column, index, msg, } = Column.get(meta, item);
+
+            if (!column) {
+                throw new Error(msg);
+            }
+
+            let { minWidth, maxWidth, } = column;
+
+            //列宽不能小于指定的最小宽度。
+            if (minWidth > 0) {
+                width = Math.max(width, column.minWidth);
+            }
+
+            //列宽不能大于指定的最大宽度。
+            if (maxWidth > 0) {
+                width = Math.min(width, maxWidth);
+            }
+
+            let dx = width - column.width;
+         
+            //会触发事件。
+            meta.setWidth(column, width, { type: 'set', dx, index, });
+        }
+
+
+        /**
+        * 清空表格。
+        * @returns
+        */
+        clear() {
+            let meta = mapper.get(this);
+            let colgroup = meta.$.find('colgroup').get(0);
+
+            colgroup.parentNode.removeChild(colgroup);
+
+            meta.columns.forEach((column) => {
+                column.$ = null;
+
+                let resizer = document.getElementById(column.id);
+                resizer.parentNode.removeChild(resizer);
+            });
+
+
+            meta.columns = [];
+            meta.id$column = {};
+        }
+
+        /**
+        * 绑定事件。
+        */
+        on(...args) {
+            let meta = mapper.get(this);
+            meta.emitter.on(...args);
+        }
+
+
+    }
+
+    module.exports = exports = TableResizer;
+    exports.defaults = require('TableResizer.defaults');
+
+});
+
+
+define('TextTree/Events/Status', function (require, module, exports) {
+    const $ = require('$');
+
+
+    return exports = {
+        //
+        close(item, includeSelf) {
+            item.childs.forEach((item) => {
+                //用户手动关闭的，直接关闭当前节点即可。
+                //不需要再关闭下级节点。
+                if (item.closed) {
+                    $(`#${item.id}`).slideUp('fast');
+                }
+                else {
+                    exports.close(item, true);//递归。
+                }
+
+            });
+
+            if (includeSelf) {
+                $(`#${item.id}`).slideUp('fast');
+            }
+        },
+
+        //
+        open(item, includeSelf) {
+            item.childs.forEach((item) => {
+                //用户手动关闭的。
+                if (item.closed) {
+                    $(`#${item.id}`).slideDown('fast');
+                }
+                else {
+                    exports.open(item, true); //递归。
+                }
+
+            });
+
+
+            if (includeSelf) {
+                $(`#${item.id}`).slideDown('fast');
+            }
+        },
+
+    };
+});
+define('TextTree/Template/Class', function (require, module, exports) {
+    
+    return {
+        stringify(data) {
+            if (Array.isArray(data)) {
+                data = data.filter((item) => {
+                    return !!item;
+                });
+                data = data.join(' ');
+            }
+
+            if (!data) {
+                return '';
+            }
+
+            return `class="${data}"`;
+        },
+    };
+});
+define('TextTree/Template/DataSet', function (require, module, exports) {
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            let list = Object.keys(data).map((key) => {
+                let value = data[key];
+
+                return `data-${key}="${value}"`;
+            });
+
+            return list.join(' ');
+        },
+    };
+});
+define('TextTree/Template/Style', function (require, module, exports) {
+    const Style = require('@definejs/style');
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            data = Style.stringify(data);
+            
+            if (!data) {
+                return '';
+            }
+
+            data = data.trim();
+
+            return `style="${data}"`;
+        },
+    };
+});
+define('TextTree/Template/Title', function (require, module, exports) {
+
+    return {
+        stringify(data) {
+            if (!data) {
+                return '';
+            }
+
+            return `title="${data}"`;
+        },
+    };
+});
+
+/**
+* 
+*/
+define('TextTree/Data', function (require, module, exports) {
+    const $String = require('@definejs/string');
+    const Tree = require('@definejs/tree');
+
+    return {
+
+        /**
+        * 
+        */
+        make(raws, trimLeft) {
+            let tree = new Tree();
+
+            raws.forEach((raw) => {
+                tree.set(raw.keys, raw);
+            });
+
+            let item$node = new Map();
+            let node$item = new Map();
+            let id$item = {};
+
+            let list = tree.render(function (node, info) {
+                let raw = node.value || {};
+                let id = raw.id || $String.random();
+                let { tabs, linker, } = info;
+
+                if (trimLeft) {
+                    if (tabs) {
+                        tabs = tabs.slice(4);
+                    }
+                    else {
+                        linker = linker.slice(4);
+                    }
+                }
+
+                let item = {
+                    'id': id,
+                    'class': raw.class,
+                    'dataset': raw.dataset,
+                    'title': raw.title,
+                    'style': raw.style,
+                    'value': raw.value,
+                    'icon': raw.icon,
+                    'data': raw.data, //节点的自定义数据，仅用来存储在当前节点，以便后续用户再读取出来使用。
+
+                    'isRoot': node.isRoot,
+                    'key': node.key,
+                    'keys': node.keys,
+                    'x': node.x,
+                    'y': node.y,
+                    'tabs': tabs,
+                    'linker': linker,
+                    'type': '',     //`dir` 或 `file`
+
+                    'parent': null,
+                    'childs': [],
+                    'siblings': [],
+
+                    'closed': false,            //记录主动关闭的项。 即由用户手动关闭的，而非程序关闭的。
+                    'raw': node.value,          //如果为空，则为虚拟节点。 即由于适应树形结构而必须构造出的辅助节点。
+                };
+
+                id$item[id] = item;    //
+                item$node.set(item, node);
+                node$item.set(node, item);
+
+                return item;
+            });
+
+            list.forEach((item) => {
+                let node = item$node.get(item);
+
+                let childs = node.nodes.map((node) => {
+                    return node$item.get(node);
+                });
+
+                item.type = childs.length > 0 ? 'dir' : 'file';
+                item.childs = childs;
+
+                item.parent = node$item.get(node.parent);
+
+                item.siblings = node.siblings.map((node) => {
+                    return node$item.get(node);
+                });
+            });
+
+            return {
+                list,
+                id$item,
+            };
+
+        },
+
+
+    };
+
+});
+
+
+
+
+
+define('TextTree/Events', function (require, module, exports) {
+    const $ = require('$');
+    const Status = module.require('Status');
+
+
+    return {
+        bind(meta) {
+
+            meta.$.on('click', `>li [data-cmd="icon"]`, function (event) {
+                let { id, } = this.dataset;
+                let item = meta.id$item[id];
+
+                if (item.childs.length == 0) {
+                    return;
+                }
+
+                let $icon = $(this);
+                let needOpen = $icon.hasClass('closed');
+                let needClose = !needOpen;
+              
+                if (needClose) {
+                    Status.close(item);
+                }
+                else {
+                    Status.open(item);
+                }
+                
+                item.closed = needClose;//此语句要在 close 或 open 之后。
+                $icon.toggleClass('closed', needClose);
+            });
+
+
+            meta.$.on('click', `>li [data-cmd]`, function (event) {
+                let { cmd, id, } = this.dataset;
+                let item = meta.id$item[id];
+
+                meta.emitter.fire('click', cmd, [item, event]);
+
+            });
+
+       
+
+
+
+           
+        },
+
+    };
+});
+
+/**
+* 
+*/
+define('TextTree/Meta', function (require, module, exports) {
+    const $String = require('@definejs/string');
+
+    return {
+
+        create (config, others) {
+            let id = $String.random();
+
+            let meta = {
+                'id': id,                           //实例 id，会生成到 DOM 元素中。
+
+                'container': config.container,      //表格的容器。
+                'template': config.template,        //使用的 html 模板的对应的 DOM 节点选择器。
+                'class': config.class,              //css 类名。
+                'style': config.style,              //css 样式。
+                'dataset': config.dataset,          //自定义数据集，会在 html 中生成 `data-` 的自定义属性。
+                'icon': config.icon,                //
+                'trimLeft': config.trimLeft,        //
+                'showValue': config.showValue,      //
+                'showIcon': config.showIcon,        //
+                'showTab': config.showTab,          //
+                'showColor': config.showColor,      //
+                'showHover': config.showHover,      //
+                
+
+                'list': [],     //渲染后对应的列表，排序可能跟 render(list) 中传入的 list 不同，以此为准。
+                'id$item': {},  //
+                
+                '$': null,
+                'this': null,
+                'emitter': null,
+                'tpl': null,
+            };
+
+
+            Object.assign(meta, others);
+
+
+
+            return meta;
+           
+        },
+
+
+    };
+    
+});
+
+
+
+
+
+define('TextTree/Template', function (require, module, exports) {
+    const Template = require('@definejs/template');
+    const Class = module.require('Class');
+    const DataSet = module.require('DataSet');
+    const Style = module.require('Style');
+    const Title = module.require('Title');
+
+
+
+    return {
+        create: function (meta) {
+            let tpl = new Template(meta.template);
+
+            function fill(name, data) {
+                let html = tpl.fill(name, data);
+
+                html = html.trim();
+                html = html.split('\n').join('');
+                return html;
+            }
+
+
+            tpl.process({
+                '': function () {
+                    this.fix(['class', 'title', 'dataset', 'style',]);
+
+                    let classList = [
+                        meta.class,
+                        meta.showTab ? '' : 'hide-tab',
+                        meta.showIcon ? '' : 'hide-icon',
+                        meta.showValue ? '' : 'hide-value',
+                        meta.showColor ? '' : 'hide-color',
+                        meta.showHover ? '' : 'hide-hover',
+                    ];
+
+                    let cssClass = Class.stringify(classList);
+                    let dataset = DataSet.stringify(meta.dataset);
+                    let style = Style.stringify(meta.style);
+                    let items = this.fill('item', meta.list);
+
+                    return {
+                        'id': meta.id,
+                        'class': cssClass,
+                        'dataset': dataset,
+                        'style': style,
+                        'items': items,
+                    };
+                },
+
+
+                'item': function (item, index) {
+                    this.fix(['class', 'title', 'dataset', 'style',]);
+                    
+                    meta.emitter.fire('process', 'item', [item]);
+
+                    let cssClass = Class.stringify([item.class, item.type]);
+                    let dataset = DataSet.stringify(item.dataset);
+                    let style = Style.stringify(item.style);
+                    let title = Title.stringify(item.title);
+
+                    let tabs = fill('tabs', item);
+                    let linker = fill('linker', item);
+                    let key = fill('key', item);
+
+
+                    return {
+                        'id': item.id,
+                        'class': cssClass,
+                        'dataset': dataset,
+                        'style': style,
+                        'title': title,
+                        'tabs': tabs,
+                        'linker': linker,
+                        'key': key,
+                    };
+                },
+
+                'tabs': function (item) {
+                    let { tabs, } = item;
+                    let count = 0;
+
+                    tabs = tabs.split('').map(function (item, index) {
+                        item = item.trim();
+                        count++;
+
+                        if (item.length > 0) {
+                            count = 0;
+                        }
+
+                        let cls = '';
+
+
+                        //首项没有内容的，也当是一个分组。
+                        if ((!item && index == 0) || count == 4) {
+                            cls = 'grouper';
+                            count = 0;
+                        }
+
+                        let b = fill('b', {
+                            'class': cls,
+                            'text': item,
+                        });
+
+                        return b;
+                    });
+
+                    return { tabs, };
+                },
+
+                'linker': function (item) {
+                    return item.linker ? item : '';
+                },
+
+                'key': {
+                    '': function (item) {
+                        let icon = this.fill('icon', item);
+                        let value = this.fill('value', item); //可能返回空串。
+
+                        return {
+                            'id': item.id,
+                            'key': item.key,
+                            'type': item.type,
+                            'icon': icon,
+                            'value': value,
+                        };
+                    },
+
+                    'icon': function (item) {
+                        let { id, type, } = item;
+                        let icon = Object.assign({}, meta.icon, item.icon);
+
+                        icon = icon[type];
+
+                        return icon ? { id, type, icon, } : '';
+                    },
+
+                    'value': function (item) {
+                        return item.value ? item : '';
+                    },
+                },
+
+
+
+
+            });
+
+
+            return tpl;
+
+        },
+
+    };
+});
+
+define('TextTree.defaults', {
+    //组件的 id，会生成到 DOM 元素中。
+    //一般情况下不需要指定，组件内部会自动生成一个随机的。
+    //如果自行指定，请保证在整个 DOM 树中是唯一的。
+    id: '',
+
+    container: '',              //
+    template: '#tpl-TextTree',  //
+    class: 'TextTree',          //css 类名。
+    style: {},                  //生成在 DOM 节点中的内联样式。
+    dataset: {},                //生成在 DOM 节点中的以 `data-` 开头的自定义属性。
+
+    icon: {
+        dir: 'fas fa-angle-down',   //目录节点的图标。 如果指定为空串，则不生成图标 html。
+        file: 'far fa-circle',      //文件节点的图标。 如果指定为空串，则不生成图标 html。
+    },
+
+    //是否公开 meta 对象。
+    //如果指定为 true，则外部可以通过 this.meta 来访问。
+    //在某些场合需要用到 meta 对象，但要注意不要乱动里面的成员。
+    meta: false,
+
+    trimLeft: false,    //是否去除左边的4个字符，以便消除一层多余的层级。
+    showValue: false,   //是否显示值的部分。
+    showIcon: false,    //是否显示节点图标，以便可以展开或收起子节点。
+    showTab: false,     //是否显示缩进对齐线。
+    showColor: false,   //是否显示彩色。
+    showHover: false,   //是否显示鼠标悬停时的背景色。
+});
+
+/**
+* 文本树。
+*/
+define('TextTree', function (require, module, exports) {
+    const Emitter = require('@definejs/emitter');
+    const $ = require('$');
+    const Data = module.require('Data');
+    const Events = module.require('Events');
+    const Meta = module.require('Meta');
+    const Template = module.require('Template');
+
+
+    let mapper = new Map();
+
+    class TextTree {
+        /**
+        * 构造器。
+        * @param {Object} config 配置项。
+        */
+        constructor(config) {
+            config = Object.assign({}, exports.defaults, config);
+
+            let emitter = new Emitter(this);
+
+            let meta = Meta.create(config, {
+                'this': this,
+                'emitter': emitter,
+            });
+
+            meta.tpl = Template.create(meta);
+
+            mapper.set(this, meta);
+
+            //指定了公开 meta 对象。
+            if (config.meta) {
+                this.meta = meta;
+            }
+
+            this.id = meta.id;
+            this.$ = meta.$;
+        }
+
+        /**
+        * 渲染。
+        * @param {Array} raws 数据列表。 其中列表中的每个元素为：
+        *   item = {
+        *       keys: [],       //必选，节点名称数组。 如 ['foo', 'bar']
+        *       id: '',         //可选，会生成在 DOM 节点中。 如果指定，请确保唯一。
+        *       class: '',      //可选，生成在 DOM 节点中的样式类名。
+        *       dataset: {},    //可选，生成在 DOM 节点中的以 `data-` 开头的自定义属性。
+        *       title: '',      //可选，生成在 DOM 节点中的 title 提示。
+        *       style: {},      //可选，生成在 DOM 节点中的内联样式。
+        *       value: '',      //可选，要展示的值部分，即副字段。
+        *       data: {},       //可选，用户的自定义数据，仅用来存储在当前节点，以便后续用户再读取出来使用，组件内部不使用。
+        *   };
+        * @returns 
+        */
+        render(raws = []) {
+            let meta = mapper.get(this);
+            let { list, id$item, } = Data.make(raws, meta.trimLeft);
+           
+            meta.list = list;
+            meta.id$item = id$item;
+
+            //已浸染过。
+            if (meta.$) {
+                let html = meta.tpl.fill('item', meta.list);
+                meta.$.html(html);
+                return;
+            }
+
+
+            let html = meta.tpl.fill({});
+
+            $(meta.container).html(html);
+            meta.$ = this.$ = $(`#${meta.id}`);
+            Events.bind(meta);
+        }
+
+        /**
+        * 转成字符串文本。
+        * @param {boolean} withValue 可选，是否带上值部分。
+        *   如果不指定，则根据当前界面的状态来判断。
+        */
+        toString(withValue) {
+            let meta = mapper.get(this);
+
+            //如果没有指定 withValue, 则根据当前界面的状态来判断。
+            if (withValue === undefined && meta.$) {
+                withValue = !meta.$.hasClass('hide-value');
+            }
+
+            let texts = meta.list.map(function (item) {
+                let value = withValue ? item.value : '';
+                let s = `${item.tabs}${item.linker} ${item.key}`;
+
+                if (value) {
+                    s = s + ' ' + value;
+                }
+
+                return s;
+            });
+
+            let content = texts.join('\n');
+
+            return content;
+        }
+
+        /**
+        * 绑定事件。
+        */
+        on(...args) {
+            let meta = mapper.get(this);
+
+            meta.emitter.on(...args);
+        }
+
+        /**
+        * 切换显示或隐藏指定的效果。
+        * 切换展开或收起指定的节点。
+        * 切换显示或隐藏整个组件。
+        */
+        toggle(opt) {
+            let meta = mapper.get(this);
+
+            if (!meta.$) {
+                return;
+            }
+
+            switch (typeof opt) {
+                //展开或收起指定的节点。
+                case 'string':
+                    let id = opt;
+                    $(`#${id}`).find(`[data-cmd][data-id="${id}"]`).trigger('click');
+                    break;
+                
+                //切换显示某种效果，如显示或隐藏颜色。
+                case 'object':
+                    Object.keys(opt).forEach((key) => {
+                        let visible = opt[key];
+                        meta.$.toggleClass(`hide-${key}`, !visible);
+                    });
+                    break;
+                
+                //整个组件的显示或隐藏。
+                default:
+                    meta.$.toggle(opt);
+                    break;
+            }
+
+
+        }
+
+
+
+    }
+
+
+
+    module.exports = exports = TextTree;
+    exports.defaults = require('TextTree.defaults');
+});
 
 define('CheckBox.defaults', {
     checked: false,
@@ -2908,1014 +7108,6 @@ define('File', function (require, module, exports) {
 
 
 /**
-* 
-*/
-define('GridView/Check', function (require, module, exports) {
-    const $ = require('$');
-
-
-
-    return {
-        /**
-        * 选中或取消选中指定的项。
-        * 或者通过该项的状态自动进行选中或取消选中。
-        * 已重载 check(meta, item);            //通过该项的状态自动进行选中或取消选中。
-        * 已重载 check(meta, item, checked);   //选中或取消选中指定的项。
-        */
-        item: function (meta, item, checked) {
-            let id = item[meta.primaryKey];
-            let current = meta.current;
-            let id$item = current.id$item;
-            let list = new Set(current.list); //记录选中的 id，通过 Set() 可以去重。
-
-            //未指定是否选中，则自动判断。
-            if (checked === undefined) {
-                checked = !id$item[id];
-            }
-
-            if (checked) {
-                id$item[id] = item;
-                list.add(id);
-            }
-            else {
-                delete id$item[id];
-                list.delete(id);
-            }
-
-            current.list = [...list];
-            $('#' + meta.countId).html(list.size);
-
-
-            //映射回具体的记录。
-            list = meta.this.get();
-
-            meta.emitter.fire('check', [{
-                'item': item,
-                'checked': checked,
-                'list': list,
-                'id$item': id$item,
-            }]);
-
-            return checked;
-        },
-
-        /**
-        * 检查当前填充的列表和已选中的项的关系，看是否需要勾选表头的全选框。
-        */
-        all: function (meta) {
-            let list = meta.list;
-            let id$item = meta.current.id$item;
-            let key = meta.primaryKey;
-            let len = list.length;
-            let allChecked = len > 0;   //如果有数据，则先假设已全部选中。
-
-            //检查当前填充的列表，
-            //只要发现有一项没有选中，则全选的就去掉。
-            for (let i = 0; i < len; i++) {
-                let item = list[i];
-                let id = item[key];
-
-                if (!id$item[id]) {
-                    allChecked = false;
-                    break;
-                }
-            }
-
-            $('#' + meta.checkAllId).toggleClass('on', allChecked);
-        },
-    };
-    
-});
-
-
-
-
-/**
-* 
-*/
-define('GridView/Fields', function (require, module, exports) {
-
-
-    const defaults = require('GridView.defaults');
-
-
-
-    return {
-        /**
-        * 获取字段列表。
-        */
-        get: function (config) {
-            let fields = config.fields;
-            let check = config.check;
-            let order = config.order;
-            let list = [];
-           
-            //是否指定了显示复选框列。
-            check = check === true ? defaults.check : check;
-
-            //是否指定了显示序号列。
-            order = order === true ? defaults.order : order;
-         
-            //复选框列。
-            check && list.push({
-                'name': check.name,
-                'width': check.width,
-                'caption': '',
-                'class': check.class,
-                'dragable': check.dragable,
-            });
-
-
-            //序号列。
-            order && list.push({
-                'name': order.name,
-                'width': order.width,
-                'caption': order.caption,
-                'class': order.class,
-                'dragable': order.dragable,
-            });
-
-            //其它字段。  field 里也许有其它字段，这里只挑出需要用到的。
-            fields.forEach(function (field) {
-                list.push({
-                    'name': field.name,
-                    'width': field.width,
-                    'caption': field.caption,
-                    'class': field.class,
-                    'dragable': field.dragable,
-                    'delegate': field.delegate,
-                });
-            });
-
-            return list;
-        },
-
-        /**
-        * 计算所有列宽的总和。
-        */
-        sumWidth: function (fields) {
-            let sum = 0;
-
-            fields.map(function (field) {
-                sum += field.width;
-            });
-
-            return sum;
-        },
-    };
-    
-});
-
-
-
-
-/**
-* 
-*/
-define('GridView/Meta', function (require, module, exports) {
-    const $String = require('@definejs/string');
-
-
-
-    return {
-        /**
-        * 
-        */
-        create: function (config, others) {
-            //全部列表数据数组。 如果指定该字段，则在组件内部进行分页。
-            let all = config.all; 
-            let total = all ? all.length : config.total;
-
-            let meta = {
-                //dom 节点中用到的 id，方便快速获取对应的 dom 节点。
-                //一旦生成后，不会再变。 采用随机 id，可防止 id 冲突。
-                'id': $String.random(),
-                'pagerId': $String.random(),
-                'tableId': $String.random(),
-                'headerId': $String.random(),
-                'counterId': $String.random(),
-                'countId': $String.random(),
-                'checkAllId': $String.random(),
-                'nodataId': $String.random(),
-
-                '$': null,              //jQuery 实例 。
-                '$container': null,     //$(container)。
-                '$nodata':  null,       //$(#nodataId)
-                'table': null,          //Table 组件实例
-                'pager': null,          //Pager 组件实例。
-                'tpl': null,            //Template 组件实例。
-                'resizer': null,        //Resizer 组件实例。
-                'checkItem': null,      //是一个函数。 这里先占位。
-                'checkAll': null,       //是一个函数。 这里先占位。
-
-                'all': all,             //全部列表数据数组。 如果指定该字段，则在组件内部进行分页。
-                'total': total,         //总记录数。 用于计算分页。
-
-                'container': config.container,      //容器。
-                'class': config.class,              //
-                'no': config.no,                    //当前的页码。
-                'size': config.size,                //正常模式下的分页大小。
-                'sizes': config.sizes,              //可供选择的页码列表。
-                'sumWidth': 0,                      //全部列的总宽。
-
-                'check': config.check,              //是否启用复选框列。 可以指定为 true 或一个 {} 配置。
-                'order': config.order,              //是否启用序号列。 可以指定为 true 或一个 {} 配置。
-                'primaryKey': config.primaryKey,    //主键的键名。 如 `id`。
-                'footer': !!config.footer,          //是否显示 footer。 确保是一个 boolean。
-
-                'list': [],                         //当前填充到 UI 中的数据。
-                'oldList': null,                    //用于切换到已选模式之前，备份 meta.list 的数据，以便用于切换回正常模式。
-                'selectedMode': false,              //表示是否处于已选模式，如果是，则列表中显示的是已选的数据。
-                'index$checkedJSON': '',                //切换显示指定的列。
-
-                //选中的信息。
-                'current': {
-                    'list': [],         //记录选中的项的 id 集合。
-                    'id$item': {},      //记录选中的项的 id 与 项的关系。
-                },
-
-
-
-
-            };
-
-            Object.assign(meta, others);
-
-            return meta;
-           
-        },
-
-
-    };
-    
-});
-
-
-
-
-/**
-* 
-*/
-define('GridView/Pager', function (require, module, exports) {
-
-    const Pager = require('Pager');
-
- 
-
-
-    return {
-
-        create: function (meta) {
-            let pager = new Pager({
-                'container': '#' + meta.pagerId,    //分页控件的容器
-                'total': meta.total,                //总的记录数，应该从后台取得该值。
-                'size': meta.size,                  //每页的大小，即每页的记录数。
-                'sizes': meta.sizes,
-                //'min': 2,                           //总页数小于该值时，分页器会隐藏。 如果不指定，则一直显示。
-            });
-
-
-            pager.on({
-                //翻页时会调用该方法，参数 no 是当前页码。
-                //前端应根据当前页码去拉后台数据。
-                'change': function (no, size) {
-                    meta.no = no;
-                    meta.size = size;
-                    meta.selectedMode = false;  //翻页后重置为正常模式。
-                    meta.emitter.fire('page', 'change', [no, size]);
-                },
-
-                //控件发生错误时会调用该方法，比如输入的页码有错误时
-                'error': function (msg) {
-                    meta.emitter.fire('page', 'error', [msg]);
-                },
-            });
-
-            return pager;
-           
-        },
-
-        /**
-        * 从总列表中截取指定分页的列表数据。
-        */
-        list: function (all, no, size) {
-            let begin = (no - 1) * size;
-            let end = begin + size;
-            let list = all.slice(begin, end);
-
-            return list;
-        },
-    };
-    
-});
-
-
-
-
-/**
-* 
-*/
-define('GridView/Resizer', function (require, module, exports) {
-    const $ = require('$');
-    const TableResizer = require('TableResizer');
-
-
-    return {
-        create: function (meta) {
-            //表体的调整器。
-            let rsz = null;
-
-            //表头的调整器。
-            let resizer = new TableResizer({
-                'table': '#' + meta.headerId,
-                'fields': meta.fields,
-            });
-
-            //表头的全选。
-            resizer.on('render', function () {
-                let chk = '#' + meta.checkAllId;
-
-                this.$.on('click', chk, function () {
-                    let $chk = $(this);
-                    let checked = !$chk.hasClass('on');
-
-                    $chk.toggleClass('on', checked);
-
-                    meta.table.column('check', function (cell) {
-                        cell.ctrl.toggleClass('on', checked);
-                        meta.checkItem(cell.row.data, checked);
-                    });
-
-                });
-            });
-
-            resizer.on({
-                'render': function (width, fields) {
-                    rsz = new TableResizer({
-                        'table': meta.table.get('element'),
-                        'dragable': false,
-                        'fields': fields,
-                    });
-
-                    rsz.render();
-                },
-
-                'change': function (data) {
-                    rsz.set(data);
-
-                    // let containerWidth = meta.$container.width();
-                    // let width = Math.max(containerWidth, data.width + 10);
-                    // meta.$.width(width);
-
-                    meta.$.width(data.width + 10);
-                },
-            });
-
-
-
-            return resizer;
-           
-        },
-    };
-    
-});
-
-
-
-
-/**
-* 
-*/
-define('GridView/Table', function (require, module, exports) {
-    const $ = require('$');
-    const Table = require('Table');
-
-
-
-    return {
-
-        create: function (meta) {
-            let table = new Table({
-                'container': '#' + meta.tableId,    //生成的表格 html 要塞进去的容器。
-                'fields': meta.fields,              //字段列表。 item = { name, caption, width, class, };
-                'order': false,                     //这里不通过 table 组件来自动生成序号，而是通过下面的的方式生成。
-                'columnName': 'name',               //
-            });
-
-            table.on('process', {
-                'row': function (row) {
-                    row.value = row.data[meta.primaryKey];  //把主键的值(如 id)作为整行的值。
-                    meta.emitter.fire('process', 'row', [row]);
-                },
-
-                'cell': {
-                    '': function (cell) {
-                        //先触发具体名称的单元格事件。
-                        let values = meta.emitter.fire('process', 'cell', cell.name, [cell]);
-                        let value = values.slice(-1)[0]; //以最后一个为准。
-
-                        //再触发统一的单元格事件。
-                        if (value === undefined) {
-                            values = meta.emitter.fire('process', 'cell', [cell]);
-                            value = values.slice(-1)[0]; //以最后一个为准。
-                        }
-
-                        //业务层没有绑定事件并返回一个有效值。
-                        if (value === undefined) {
-                            value = cell.row.data[cell.name];
-                        }
-
-                        cell.value = value;
-                        return value;
-
-                    },
-
-                    //复选列。
-                    'check': function (cell) {
-                        let row = cell.row;
-                        let checked = meta.current.id$item[row.value];
-
-                        return meta.tpl.fill('check-item', {
-                            'index': row.index,
-                            'checked': checked ? 'on' : '',
-                        });
-                    },
-
-                    //序号列。
-                    'order': function (cell) {
-                        let row = cell.row;
-                        let order = row.index + 1;
-
-                        //指定了不使用全局序号，或者当前处于已选模式下，则使用局部序号，即从 1 开始。
-                        if (!meta.order.global || meta.selectedMode) {
-                            return order;
-                        }
-
-                        //使用全局序号，即跟分页无关。
-                        let base = (meta.no - 1) * meta.size;
-
-                        return base + order;
-                    },
-                },
-
-            });
-
-       
-
-            table.on('render', function () {
-
-                table.$.on('click', '[data-cmd="check-item"]', function () {
-                    let cid = this.parentNode.id;   //单元格 id。
-                    let cell = table.get(cid);      //
-                    let checked = meta.checkItem(cell.row.data);
-
-                    $(this).toggleClass('on', checked);
-                    meta.checkAll();
-                });
-
-
-            });
-
-
-
-            table.on('fill', function (list) {
-                meta.list = list;
-
-                //启用了复选框列才执行。
-                if (meta.check) {
-                    meta.checkAll();
-
-                    table.column('check', function (cell) {
-                        cell.ctrl = $(cell.element).find('[data-cmd="check-item"]');
-                    });
-                }
-            });
-
-            table.on('click', {
-                '': function (event) {
-                    meta.emitter.fire('click', 'table', [table, event]);
-                },
-
-                'row': function (row, event) {
-                    meta.emitter.fire('click', 'row', [row, event]);
-                },
-
-                'cell': function (cell, event) {
-                    meta.emitter.fire('click', 'cell', cell.name, [cell, event]);
-                    meta.emitter.fire('click', 'cell', [cell, event]);
-                },
-            });
-
-
-            meta.fields.forEach(function (field) {
-                let delegate = field.delegate;
-                if (!delegate) {
-                    return;
-                }
-
-                table.on('click', 'cell', field.name, delegate, function (cell, event, target) {
-                    meta.emitter.fire('click', 'cell', cell.name, delegate, [cell, event, target]);
-
-                });
-            });
-          
-
-
-            return table;
-
-
-           
-        },
-    };
-    
-});
-
-
-
-
-/**
-* 
-*/
-define('GridView/Template', function (require, module, exports) {
-    const Template = require('@definejs/template');
-
-
-
-    return {
-
-        create: function (meta) {
-            let tpl = new Template('#tpl-GridView');
-            let fields = meta.fields;
-
-            //如果指定了启用复选框列，则表头的首列生成一个全选的复选框。
-            if (meta.check) {
-                fields[0].caption = tpl.fill('check-all', {});
-            }
-
-            tpl.process({
-                '': function () {
-                    let header = this.fill('header', {
-                        'fields': fields,
-                    });
-
-                    return {
-                        'header': header,
-                        'id': meta.id,
-                        'class': meta.class,
-                        'sumWidth': meta.sumWidth + 10,
-                        'no-footer': meta.footer ? '' : 'no-footer',
-                        'headerId': meta.headerId,
-                        'tableId': meta.tableId,
-                        'pagerId': meta.pagerId,
-                        'counterId': meta.counterId,
-                        'countId': meta.countId,
-                        'checkAllId': meta.checkAllId,
-                        'nodataId': meta.nodataId,
-                    };
-                },
-
-                //表头。
-                'header': {
-                    '': function (data) {
-                        let fields = data.fields;
-                        let cells = this.fill('cell', fields);
-
-                        return {
-                            'cells': cells,
-                        };
-                    },
-
-                    'cell': function (item, index) {
-                        return {
-                            'index': index,
-                            'caption': item.caption,
-                        };
-                    },
-                },
-
-            });
-           
-
-            return tpl;
-        },
-    };
-    
-});
-
-
-
-
-define('GridView.defaults', {
-    size: 20,
-    all: null,          //全部列表数据数组。 如果指定该字段，则在组件内部进行分页。
-  
-    class: '',
-    primaryKey: 'id',
-    footer: true,       //是否显示 footer。
-
-    sizes: [10, 20, 30, 40, 50],//可供选择的分页大小列表。
-
-    check: {
-        name: 'check',
-        width: 43,
-        class: 'check',
-        dragable: false,
-    },
-
-    order: {
-        name: 'order',
-        width: 50,
-        caption: '序号',
-        global: true,       //true: 使用全局序号，即跟分页无关。 false: 使用局部序号，即每页的序号都是从 1 开始。
-        dragable: true,
-        class: 'order',
-    },
-
-    
-});
-
-
-
-/**
-* 带有翻页、固定表头的列表表格展示器组件。
-*/
-define('GridView', function (require, module, exports) {
-    const $ = require('$');
-    const Emitter = require('@definejs/emitter');
-    const $Array = require('@definejs/array');
-    const $Object = require('@definejs/object');
-
-    const Template = module.require('Template');
-    const Table = module.require('Table');
-    const Pager = module.require('Pager');
-    const Resizer = module.require('Resizer');
-    const Fields = module.require('Fields');
-    const Check = module.require('Check');
-    const Meta = module.require('Meta');
-
-    const defaults = require('GridView.defaults');
-    let mapper = new Map();
-    let emitterCounter = 0;
-
-
-
-    /**
-    * 构造器。
-    *   config = {
-    *       container: '',      //必选，生成的组件要塞进去的容器，是一个 jQuery 选择器。
-    *       size: 10,           //必选，正常模式下的分页大小，即每页多少条记录。
-    *       no: 1,              //必选，当前的页码。
-    *       total: 0,           //必选，总的记录数。 如果指定了 all 为一个数组，则取 all.length。
-    *       primaryKey: '',     //必选，列表数据中项的主键的键名。 因为每个项中有很多字段，须指定哪个字段是主键，如 `id`。
-    *       fields: [           //必选，表格列的字段数组。
-    *           {
-    *               name: '',       //必选，列的编程名称。
-    *               caption: '',    //必选，列的标题，直接显示在表头上的。
-    *               width: 0,       //必选，列的宽度。
-    *               class: '',      //可选，列的 css 类名。 该列的所有单元格都会应用此类名。 
-    *               dragable: true, //可选，是否允许该列拖曳来调整列宽。 默认为允许，只有指定为 false 才禁用拖曳。
-    *               delegate: '',   //可选，要进一步监听的委托事件。 如 `[data-cmd]`。
-    *           },
-    *       ],
-    *       footer: true,       //可选，是否显示 footer 部分。
-    *       class: '',          //可选，组件的 css 类名。
-    *       all: null | [],     //可选，全部列表数据数组。 如果指定该字段，则在组件内部进行分页。 默认为 null。
-    *       check: true | {     //可选，是否启用复选框列。 可以指定为 true 或 false 或一个 {} 配置。
-    *           name: 'check',      //
-    *           width: 43,          //
-    *           class: 'check',     //
-    *       },   
-    *       order: true | {     //可选，是否启用序号列。 可以指定为 true 或 false 或一个 {} 配置。
-    *           name: 'order',      //
-    *           width: 50,          //
-    *           caption: '序号',    //
-    *           global: true,       //true: 使用全局序号，即跟分页无关。 false: 使用局部序号，即每页的序号都是从 1 开始。
-    *       },   
-    *   };
-    */
-    function GridView(config) {
-        config = Object.assign({}, defaults, config);
-
-        let emitter = new Emitter(this);
-        let fields = Fields.get(config);
-        let width = config.width;
-        let sumWidth = Fields.sumWidth(fields);
-
-        if (width == 'auto') {
-            width = sumWidth + 264;
-        }
-
-        emitter.id = `GridView-Emitter-${emitterCounter++}`;
-
-        let meta = Meta.create(config, {
-            'emitter': emitter,         //
-            'fields': fields,
-            'width': width, //
-            'sumWidth': sumWidth,
-            'this': this,
-            'checkItem': function (item, checked) {
-                return Check.item(meta, item, checked);
-            },
-            'checkAll': function () {
-                return Check.all(meta);
-            },
-        });
-       
-        mapper.set(this, meta);
-
-        Object.assign(this, {
-            'id': meta.id,
-        });
-
-
-        //全部列表数据数组。 
-        //如果指定该字段，则在组件内部进行分页。
-        if (meta.all) {
-            this.on('pager', 'change', function (no, size) {
-                //meta.all 可能会在 this.set() 中给改变。
-                if (!meta.all) {
-                    return;
-                }
-
-                let list = Pager.list(meta.all, no, size);
-                this.fill(list);
-            });
-        }
-
-
-    }
-
-
-
-    //实例方法。
-    GridView.prototype = {
-        constructor: GridView,
-
-        id: '',
-        $: null,
-
-        /**
-        * 渲染。
-        *   opt = {
-        *       container: '',  //可选，渲染时再指定容器。
-        *   };
-        */
-        render: function (opt = {}) {
-            let meta = mapper.get(this);
-            let container = meta.container = opt.container || meta.container;
-
-            meta.tpl = Template.create(meta);
-            meta.$container = $(container);
-            
-            // let containerWidth = meta.$container.width() - 10;
-            // meta.sumWidth = Math.max(containerWidth, meta.sumWidth);
-
-            let html = meta.tpl.fill(meta);
-
-            meta.$container.html(html);
-            meta.$ = this.$ = meta.$container.find(`#${meta.id}`);
-            meta.$nodata = meta.$.find(`#${meta.nodataId}`);
-
-            meta.table = Table.create(meta);
-            meta.resizer = Resizer.create(meta);
-            meta.pager = Pager.create(meta);
-
-            meta.table.render();
-            meta.resizer.render();
-            meta.pager.render();
-
-            //切换显示已选模式和正常模式。
-            meta.$.on('click', '#' + meta.counterId, function () {
-                let selectedMode = meta.selectedMode = !meta.selectedMode;
-                let list = selectedMode ? meta.this.get() : meta.oldList;
-
-                $(this).toggleClass('selected-mode', selectedMode);
-                meta.table.fill(list);
-
-            });
-
-        },
-
-        /**
-        * 填充指定的列表数据。
-        */
-        fill: function (list, fn) {
-            let meta = mapper.get(this);
-
-            if (fn) {
-                list = $Array.map(list, fn);
-            }
-
-            meta.oldList = list;
-            meta.table.fill(list);
-            meta.$nodata.toggle(list.length == 0);
-            
-            meta.emitter.fire('fill', [list]);
-        },
-
-        /**
-        * 选中指定的项(多个)。
-        */
-        check: function (list) {
-            let meta = mapper.get(this);
-
-            list && list.forEach(function (item) {
-                meta.checkItem(item, true);
-            });
-
-            meta.list && this.fill(meta.list);
-        },
-
-
-        /**
-        * 清空所选。
-        */
-        clear: function () {
-            let meta = mapper.get(this);
-            let current = meta.current;
-            if (!current.list.length) {
-                return;
-            }
-
-            current.id$item = {};
-            current.list = [];
-
-            meta.table.column('check', function (cell) {
-                cell.ctrl.removeClass('on');
-            });
-
-            $('#' + meta.checkAllId).removeClass('on');
-            $('#' + meta.countId).html(0);
-
-            meta.emitter.fire('clear');
-        },
-
-        /**
-        * 设置属性。
-        *   options = {
-        *       all: null | [],     //
-        *       no: 1,              //
-        *       total: 0,           //
-        *       size: 10,           //
-        *   };
-        */
-        set: function (options) {
-            let meta = mapper.get(this);
-            let all = options.all;
-            let page = $Object.filter(options, ['total', 'size', 'no']);
-
-            if (!$Object.isEmpty(page)) {
-                Object.assign(meta, page);
-                meta.pager.render(page);
-            }
-
-            if (all) {
-                meta.all = all;
-            }
-        },
-
-        /**
-        * 获取当前选中的列表数据。
-        */
-        get: function () {
-            let meta = mapper.get(this);
-            let list = meta.current.list || [];
-            let id$item = meta.current.id$item;
-
-            //映射回具体的记录。
-            list = list.map(function (id) {
-                return id$item[id];
-            });
-
-            return list;
-        },
-
-        /**
-        * 跳转到指定的页码。
-        */
-        to: function (no) {
-            let meta = mapper.get(this);
-            meta.pager.to(no);
-        },
-
-        /**
-        * 销毁。
-        */
-        destroy: function () {
-            let meta = mapper.get(this);
-
-            //已销毁。
-            if (!meta) {
-                return;
-            }
-
-            meta.emitter.destroy();
-            meta.resizer.destroy();
-            meta.table.destroy();
-            meta.pager.destroy();
-            meta.tpl.destroy();
-
-            mapper.delete(this);
-
-        },
-
-        /**
-        * 绑定事件。
-        */
-        on: function () {
-            let meta = mapper.get(this);
-            meta.emitter.on(...arguments);
-        },
-
-
-        /**
-        * 切换显示指定的列。
-        */
-        toggleFields(index$checked) {
-            if (!index$checked) {
-                return;
-            }
-
-            
-            let meta = mapper.get(this);
-            let json = JSON.stringify(index$checked);
-            
-            if (json == meta.index$checkedJSON) {
-                return;
-            }
-
-            meta.index$checkedJSON = json;
-
-            let $header = $(`#${meta.headerId}`);
-            let $body = $(`#${meta.tableId}>table`);
-            let hideWidth = 0;
-
-            function toggle(el) {
-                let { index, } = el.dataset;
-                let checked = index$checked[index];
-                let field = meta.fields[index];
-
-                if (typeof checked == 'boolean') {
-                    $(el).toggle(checked);
-                    return checked ? 0 : field.width;
-                }
-
-                return 0;
-                
-            }
-
-            $header.find(`col`).each(function () {
-                let width = toggle(this);
-                hideWidth += width;
-            });
-
-            $header.find(`th`).each(function () {
-                toggle(this);
-            });
-
-            $body.find(`col`).each(function () {
-                toggle(this);
-            });
-
-            $body.find('>tbody>tr>td').each(function () {
-                toggle(this);
-            });
-
-            //以下实现跟手动调整列宽时有冲突，体验不好，待改进。
-            let w = meta.sumWidth - hideWidth;
-            // console.log(w);
-            // console.log($header.width());
-            // console.log($body.width());
-            // console.log(meta.$.width());
-            // console.log(meta.sumWidth)
-            
-            $header.width(w);
-            $body.width(w);
-            meta.$.width(w + 10); 
-
-            
-        },
-
-    };
-
-
-    //同时提供静态成员。
-    Object.assign(GridView, {});
-
-
-
-
-
-
-    return GridView;
-
-    
-});
-
-
-
-
-/**
 */
 define('MarkDoc/Href/Url', function (require, module, exports) {
     const Query = require('@definejs/query');
@@ -5402,543 +8594,6 @@ define('MenuNav', function (require, module, exports) {
     return MenuNav;
 });
 
-define('MenuTree/Data', function (require, module, exports) {
-    const IDMaker = require('@definejs/id-maker');
-
-    let idmaker = new IDMaker(module.parent.id);
-
-
-    function make(list, parent, context, fn) {
-        if (!list) {
-            return [];
-        }
-        
-
-        list = list.map((item) => {
-            let id = item.id;
-
-            //针对非字符串类型的 id，尝试转成 json 字符串。
-            if (typeof id != 'string') {
-                id = JSON.stringify(id);
-
-                //如果转换后依然不是字符串，则自动分配。
-                if (typeof id != 'string') {
-                    id = idmaker.next('item');
-                }
-            }
-
-            context.cid++;
-
-            let node = {
-                'id': id,
-                'cid': context.cid,
-                'level': 0,
-                'name': item.name ,
-                'open': item.open,
-                'dirIcon': item.dirIcon,
-                'fileIcon': item.fileIcon,
-                'data': item.data,
-                'list': [],
-                'parent': parent || null,
-                'parents': [],      //向上追溯所有的父节点。
-                'children': [],     //全部子节点，包括直接的和间接的。
-
-            };
-
-            node.list = make(item.list, node, context, fn);
-
-
-            //向上追溯找出所有的父节点。
-            exports.trace(node, function (parent) {
-                parent.children.push(node);
-                node.parents.push(parent);
-            });
-
-            node.level = node.parents.length;
-            node.children.sort((a, b) => {
-                return a.cid - b.cid;
-            });
-            
-
-            fn(node);
-
-            return node;
-
-        });
-
-        return list;
-    }
-
-
-    return exports = {
-
-        make(list, meta) {
-            let id$item = {};
-            let cid$item = {};
-            let items = [];
-            let context = { cid: 0, };
-
-            list = make(list, null, context, function (node) {
-                id$item[node.id] = node;
-                cid$item[node.cid] = node;
-                items.push(node);
-
-                
-            });
-            
-
-            let data = { list, items, id$item, cid$item, };
-
-            if (meta) {
-                Object.assign(meta, data);
-            }
-
-            return data;
-
-        },
-
-
-        /**
-        * 向上追溯指定节点的所有父节点直到根节点，迭代执行指定的回调函数。
-        * @param {Object} node 树节点。
-        * @param {function} fn 要执行的回调函数。
-        */
-        trace(node, fn) {
-            let parent = node.parent;
-
-            if (!parent) {
-                return;
-            }
-
-            fn(parent);
-
-            exports.trace(parent, fn);
-        }
-       
-    };
-
-});
-
-
-
-define('MenuTree/Events', function (require, module, exports) {
-    const $ = require('$');
-
-    function toggleOpen(meta, item, $li) {
-        let $icon = $li.find('> div > i[data-cmd="icon-dir"]');
-        let $ul = $li.children('ul');
-        let open = item.open = !item.open;
-        let cmd = open ? 'open' : 'close';
-        let dirIcon = item.dirIcon || meta.dirIcon;
-
-        if (open) {
-            $icon.removeClass(dirIcon.close);
-            $icon.addClass(dirIcon.open);
-            $ul.slideDown('fast');
-
-        }
-        else {
-            $icon.removeClass(dirIcon.open);
-            $icon.addClass(dirIcon.close);
-            $ul.slideUp('fast');
-        }
-
-        $li.toggleClass('open', open);
-        meta.emitter.fire(cmd, [item]);
-
-    }
-
-
-
-
-    return {
-        bind: function (meta) {
-
-            //点击菜单项。
-            meta.$.on('click', '[data-cmd="item"]', function (event) {
-                let li = this.parentNode;
-                let { id, } = li.dataset;
-                let item = meta.id$item[id];
-                let $li = $(li);
-                let $ul = $li.children('ul');
-
-                let { current, } = meta;
-
-                if (current) {
-                    meta.$.find(`[data-id="${current.id}"]`).removeClass('on'); //灭掉旧的;
-                }
-
-                $li.addClass('on');
-                meta.current = item;
-                
-                //点击的是一个目录。
-                if (item.list.length > 0) {
-                    if (item === current) {
-                        toggleOpen(meta, item, $li);
-                    }
-                    else { //点击的不是当前项。
-                        if (!item.open) {
-                            toggleOpen(meta, item, $li);
-                        }
-                        meta.emitter.fire('item', [item]);
-                    }
-                }
-                else { //点击的是一个文件。
-                    meta.emitter.fire('item', [item]);
-                }
-
-                this.scrollIntoViewIfNeeded();
-
-            });
-
-
-
-            //点击目录的图标。
-            meta.$.on('click', '[data-cmd="icon-dir"]', function (event) {
-                event.stopPropagation();
-
-                let li = this.parentNode.parentNode;
-                let { id, } = li.dataset;
-                let item = meta.id$item[id];
-                let $li = $(li);
-               
-
-                toggleOpen(meta, item, $li);
-
-               
-            });
-        },
-
-    };
-});
-
-/**
-* 
-*/
-define('MenuTree/Meta', function (require, module, exports) {
-    const IDMaker = require('@definejs/id-maker');
-
-    let idmaker = new IDMaker(module.parent.id);
-
-
-
-    return {
-
-        create: function (config, others) {
-            let id = idmaker.next();
-            
-            let meta = {
-                'id': id,
-
-                'container': config.container, //可选。
-                'dirIcon': config.dirIcon,
-                'fileIcon': config.fileIcon,
-
-                '$': null,
-                'this': null,
-                'emitter': null,
-                'tpl': null,
-
-               
-                'list': [],         //
-                'items': [],        //list 的一维数组。
-                'id$item': {},      //id 作为主键关联到项。
-                'cid$item': {},      //cid 作为主键关联到项。
-
-                'current': null,       //当前激活的节点 item。
-            };
-
-
-            Object.assign(meta, others);
-
-
-
-            return meta;
-           
-        },
-
-
-    };
-    
-});
-
-
-
-
-
-define('MenuTree/Template', function (require, module, exports) {
-    const Template = require('@definejs/template');
-
-
-   
-
-
-
-
-
-    return {
-        create: function (meta) {
-           
-            let tpl = new Template('#tpl-MenuTree');
-
-            function fill(item, index) {
-                let isDir = item.list.length > 0;
-                let name = isDir ? 'dir' : 'file';
-                let html = tpl.fill('root', name, item);
-
-                return html;
-            }
-
-            function getName(item) {
-                //让外面有机会自定义要展示的 name。
-                let names = meta.emitter.fire('fill', 'name', [item]);
-                let name = names.slice(-1)[0];
-
-                if (name === undefined) {
-                    name = item.name;
-                }
-
-                return name;
-            }
-
-            tpl.process({
-                '': function () {
-
-                    let roots = this.fill('root', meta.list);
-
-                    return {
-                        'id': meta.id,
-                        'roots': roots,
-                    };
-                },
-
-                'root': {
-                    '': function (item, index) {
-                        
-                        let root = fill(item);
-
-                        return {
-                            'root': root,
-                        };
-                        
-                    },
-
-                    'dir': function (item) {
-                        let { open, id, } = item;
-                        let items = item.list.map(fill);
-                        let current = meta.current;
-                        let dirIcon = item.dirIcon || meta.dirIcon;
-
-                        if (typeof dirIcon == 'string') {
-                            dirIcon  = {
-                                'close': dirIcon,
-                                'open': dirIcon,
-                            };
-                        }
-
-                        let name = getName(item);
-
-                        return {
-                            'id': id,
-                            'name': name || '',
-                            'open': open ? 'open' : '',
-                            'on': current && id == current.id ? 'on' : '',
-                            'display': open ? 'display: block;' : 'display: none;',
-                            'icon': open ? dirIcon.open : dirIcon.close,
-                            'items': items,
-                        };
-                    },
-
-                    'file': function (item, index) {
-                        let { id, fileIcon, } = item;
-                        let { current, } = meta;
-
-                        let name = getName(item);
-
-
-                        return {
-                            'id': id,
-                            'name': name,
-                            'icon': fileIcon || meta.fileIcon,
-                            'on': current && id == current.id ? 'on' : '',
-                        };
-                    },
-                },
-            });
-
-
-
-
-            return tpl;
-
-        },
-
-    };
-});
-
-define('MenuTree.defaults', {
-
-    //可选。
-    container: null,
-
-    //目录图标。
-    dirIcon: {
-        close: 'fa fa-folder',
-        open: 'fa fa-folder-open',
-    },
-
-    //文件图标。
-    fileIcon: 'fas fa-file-alt',
-
-});
-
-/**
-* 菜单树。
-*/
-define('MenuTree', function (require, module, exports) {
-    const Emitter = require('@definejs/emitter');
-    const $ = require('$');
-    const Data = module.require('Data');
-    const Events = module.require('Events');
-    const Meta = module.require('Meta');
-    const Template = module.require('Template');
-
-    const defaults = require('MenuTree.defaults');
-    const mapper = new Map();
-
-
-
-    class MenuTree {
-        constructor(config) {
-            config = Object.assign({}, defaults, config);
-
-            let emitter = new Emitter(this);
-            
-            let meta = Meta.create(config, {
-                'this': this,
-                'emitter': emitter,
-            });
-
-
-            mapper.set(this, meta);
-
-            Object.assign(this, {
-                'id': meta.id,
-                '$': meta.$,
-            });
-        }
-
-        render(list = []) {
-            let meta = mapper.get(this);
-
-            if (meta.$) {
-                if (list.length > 0) {
-                    this.update(list);
-                }
-
-                return;
-            }
-
-            //首次渲染。
-            meta.tpl = Template.create(meta);
-
-            if (meta.container && list.length > 0) {
-                let html = this.fill(list);
-                $(meta.container).html(html);
-            }
-
-            meta.$ = this.$ = $(`#${meta.id}`);
-            Events.bind(meta);
-
-        }
-
-        /**
-        * 填充数据以生成 HTML。
-        * 仅生成并返回 HTML 以供外部进一步使用。
-        */
-        fill(list) {
-            let meta = mapper.get(this);
-
-            Data.make(list, meta);
-
-            let html = meta.tpl.fill({}); //填充全部。
-            return html;
-        }
-
-
-        /**
-        * 更新数据。
-        */
-        update(list) {
-            let meta = mapper.get(this);
-
-            Data.make(list, meta);
-
-            let html = meta.tpl.fill('root', meta.list);
-
-            meta.$.html(html);
-        }
-
-        /**
-        * 打开指定的节点。
-        * 这会连同它的所有父节点也一起展开。
-        * 已重载 open(id);
-        * 已重载 open(cid);
-        */
-        open(id) {
-            let meta = mapper.get(this);
-            let item = null;
-
-            if (typeof id == 'string') {
-                item = meta.id$item[id];
-
-                if (!item) {
-                    throw new Error(`不存在 id 为 '${id}' 的节点`);
-                }
-            }
-            else if (typeof id == 'number') {
-                item = meta.cid$item[id];
-                if (!item) {
-                    throw new Error(`不存在 cid 为 '${id}' 的节点`);
-                }
-            }
-            else {
-                throw new Error(`无法识别的参数 id。`);
-            }
-
-            item.open = true;
-
-            //向父节点追溯，更改 open 状态。
-            //即：只要当前节点是打开状态，则它所有的父节点都要设置为打开状态。
-            Data.trace(item, function (parent) {
-                parent.open = true;
-            });
-
-            this.render(meta.list);
-
-            //是一个目录，则先假设是折叠的。
-            if (item.list.length > 0) {
-                item.open = false;
-            }
-
-            let $li = item.$ = item.$ || meta.$.find(`li[data-id="${item.id}"]`);
-            $li.find(`>[data-cmd="item"]`).trigger('click');
-
-        }
-
-        on(...args) {
-            let meta = mapper.get(this);
-            meta.emitter.on(...args);
-        }
-
-    }
-
-
-
-
-    return MenuTree;
-});
-
 
 define('Outline/Events', function (require, module, exports) {
     const $ = require('$');
@@ -6294,614 +8949,6 @@ define('Outline', function (require, module, exports) {
 
 
 });
-
-
-
-define('Pager/Events', function (require, module) {
-
-    
-    return {
-
-        bind: function (meta) {
-
-            let txtId = meta.txtId;
-            let sizerId = meta.sizerId;
-            let pager = meta.this;
-
-
-            function jump() {
-                let txt = document.getElementById(txtId);
-                let no = +txt.value;
-                pager.to(no);
-            }
-
-
-            //点击页码按钮
-            meta.$.on('click', '[data-no]', function () {
-                let li = this;
-                if ($(li).hasClass('active')) {
-                    return;
-                }
-
-                let no = +li.getAttribute('data-no');
-
-                pager.to(no);
-            });
-
-
-            //点击确定。
-            meta.$.on('click', '[data-button="to"]', function () {
-                jump();
-            });
-
-
-            //点击上一页。
-            meta.$.on('click', '[data-button="previous"]', function () {
-                pager.previous();
-            });
-
-            //点击下一页。
-            meta.$.on('click', '[data-button="next"]', function () {
-                pager.next();
-            });
-
-            //点击每页大小。
-            meta.$.on('change', '#' + sizerId, function () {
-                let index = this.selectedIndex;
-                let size = meta.sizes[index];
-
-                pager.render({ 'size': size, 'no': 1, });
-                pager.to(1);
-            });
-
-
-            //页面输入框中的键盘过滤。
-            meta.$.on('keydown', '#' + txtId, function (event) {
-                let keyCode = event.keyCode;
-                console.log(keyCode);
-
-                if (keyCode == 13) {
-                    jump();
-                    return;
-                }
-
-                let isNumber =
-                        (48 <= keyCode && keyCode <= 48 + 9) || //主键盘的 0 - 9
-                        (96 <= keyCode && keyCode <= 96 + 9);   //数字键盘的 0 - 9
-
-                let isControl =
-                        keyCode == 8 ||     //回格键。
-                        keyCode == 37 ||    //向左箭头。
-                        keyCode == 39 ||    //向右箭头。
-                        keyCode == 46;      //Delete 键
-
-                //F1 - F12 键。
-                let isFn = 112 <= keyCode && keyCode <= 112 + 11;
-                let isValid = isNumber || isControl || isFn;
-
-                if (!isValid) {
-                    event.preventDefault();
-                    return;
-                }
-
-            });
-        },
-
-    };
-
-
-});
-
-
-
-define('Pager/JumpNo', function (require, module) {
-
-
-    /**
-    * 根据总页数、当前页和上一页预测出要跳转的页码。
-    * @param {number} count 总页数。
-    * @param {number} cno 当前激活的页码。
-    * @param {number} last 上一页的页码。
-    * @return {number} 返回一个跳转的页码。
-    */
-    function get(count, cno, last) {
-
-        if (count <= 1) { // 0 或 1
-            return count;
-        }
-
-        if (cno == count) {
-            return count - 1;
-        }
-
-        var no;
-
-        if (cno > last) {
-            no = cno + 1;
-        }
-        else {
-            no = cno - 1;
-            if (no < 1) {
-                no = 2;
-            }
-        }
-
-        return no;
-
-    }
-
-
-
-    return {
-        'get': get,
-    };
-
-
-
-
-});
-
-
-
-
-define('Pager/Regions', function (require, module) {
-
-
-    /**
-    * 根据总页数和当前页计算出要填充的区间。
-    * @param {number} count 总页数。
-    * @param {number} no 当前激活的页码。
-    * @return {Array} 返回一个区间描述的数组。
-    */
-    function get(count, no) {
-
-        if (count <= 10) {
-            return [
-                {
-                    'from': 1,
-                    'to': count,
-                    'more': false,
-                }
-            ];
-        }
-
-        if (no <= 3) {
-            return [
-                {
-                    'from': 1,
-                    'to': 5,
-                    'more': true,
-                }
-            ];
-        }
-
-        if (no <= 5) {
-            return [
-                {
-                    'from': 1,
-                    'to': no + 2,
-                    'more': true,
-                }
-            ];
-        }
-
-        if (no >= count - 1) {
-            return [
-                {
-                    'from': 1,
-                    'to': 2,
-                    'more': true,
-                },
-                {
-                    'from': count - 5,
-                    'to': count,
-                    'more': false,
-                }
-            ];
-        }
-
-        return [
-            {
-                'from': 1,
-                'to': 2,
-                'more': true,
-            },
-            {
-                'from': no - 2,
-                'to': no + 2,
-                'more': no + 2 != count,
-            }
-        ];
-    }
-
-
-
-    return {
-        'get': get,
-    };
-
-
-
-
-});
-
-
-
-
-define('Pager/Sizes', function (require, module) {
-
-    
-    return {
-
-        get: function (sizes, size) {
-            size = size || sizes[0];
-            sizes = [size, ...sizes];
-            sizes = [...new Set(sizes)];
-
-            sizes.sort(function (x, y) {
-                return x > y ? 1 : -1;
-            });
-
-            return sizes;
-        },
-
-    };
-
-
-});
-
-
-
-
-define('Pager/Template', function (require, module) {
-    const Template = require('@definejs/template');
-    const $Array = require('@definejs/array');
-
-    let tpl = new Template('#tpl-Pager');
-
-
-    tpl.process({
-        '': function (data) {
-            let no = data.no;
-            let count = data.count;
-
-            let regions = this.fill('region', data.regions, no);
-            let sizes = this.fill('size', data.sizes, data.size);
-
-            return {
-                'regions': regions,
-                'sizes': sizes,
-
-                'count': data.count,
-                'total': data.total,
-                'ulId': data.ulId,
-                'txtId': data.txtId,
-                'sizerId': data.sizerId,
-                'toNo': data.toNo,
-
-                'first-disabled-class': no == Math.min(1, count) ? 'disabled' : '',
-                'final-disabled-class': no == count ? 'disabled' : '',
-                'jump-disabled-class': count == 0 ? 'disabled' : '',
-            };
-        },
-
-        'region': {
-            '': function (region, index, no) {
-                let from = region.from;
-                let to = region.to;
-                let items = $Array.pad(from, to + 1);
-
-                items = this.fill('item', items, no);
-
-                let more = region.more || '';
-                if (more) {
-                    more = this.fill('more', {});
-                }
-
-                let html = items + more;
-                return html;
-                
-            },
-
-            'item': function (no, index, cno) {
-                let active = no == cno ? 'active' : '';
-
-                return {
-                    'no': no,
-                    'active': active,
-                };
-            },
-
-            'more': function (data) {
-                return data;
-            },
-        },
-
-        'size': function (item, index, size) {
-            this.fix('selected');
-
-            return {
-                'value': item,
-                'selected': item == size ? 'selected="selected"' : '',
-            };
-        },
-
-    });
-
-
-
-    return tpl;
-
-
-
-});
-
-
-
-define('Pager.defaults', {
-    container: '',  //组件的容器。
-    total: 0,       //总记录数。
-    current: 1,     //当前页码，从 1 开始。
-    size: 20,       //分页的大小，即每页的记录数。
-    min: 0,         //总页数小于该值时，分页器会隐藏。 如果不指定或指定为 0，则一直显示。
-    sizes: [10, 20, 30, 40, 50],      //可供选择的分页大小列表。
-});
-
-
-
-/**
-* 标准分页控件。 
-*/
-define('Pager', function (require, module) {
-    const $ = require('$');
-    const Emitter = require('@definejs/emitter');
-    const $String = require('@definejs/string');
-
-    const Events = module.require('Events');
-    const JumpNo = module.require('JumpNo');
-    const Regions = module.require('Regions');
-    const Sizes = module.require('Sizes');
-
-    const defaults = require('Pager.defaults');
-    let mapper = new Map();
-
-
-
-
-    /**
-    * 根据指定配置信息创建一个分页器实例。
-    * @param {Object} config 传入的配置对象。 其中：
-    * @param {string|DOMElement} container 分页控件的 DOM 元素容器。
-    * @param {number} [no=1] 当前激活的页码，默认从 1 开始。
-    * @param {number} size 分页大小，即每页的记录数。
-    * @param {number} total 总的记录数。
-    * @param {number} min 总页数小于该值时，分页器会隐藏。 
-        如果不指定，则一直显示。
-    * @param {function} change 页码发生变化时的回调函数。
-        该函数会接受到当前页码的参数；并且内部的 this 指向当前 Pager 实例。
-    * @param {function} error 控件发生错误时的回调函数。
-        该函数会接受到错误消息的参数；并且内部的 this 指向当前 Pager 实例。
-    */
-    function Pager(config) {
-        config = Object.assign({}, defaults, config);
-
-        let id = $String.random();
-        let emitter = new Emitter(this);
-        let size = config.size ;
-        let sizes = Sizes.get(config.sizes, size);
-
-        let meta = {
-            'id': id,                           //
-            'txtId': $String.random(),          //
-            'ulId': $String.random(),           //
-            'sizerId': $String.random(),        //
-            '$': null,                          //         
-            'ctn': config.container,            //当前组件的容器。
-            'no': config.no || 1,               //当前页码，从 1 开始。
-            'size': size,                       //分页的大小，即每页的记录数。
-            'total': config.total || 0,         //总的记录数。
-            'min': config.min || 0,             //总页数小于该值时，分页器会隐藏。 如果不指定或指定为 0，则一直显示。
-            'count': 0,                         //总页数，计算得到。
-            'last': 0,                          //上一次的页码。
-            'sizes': sizes,                     //可供选择的分页大小列表。
-            'emitter': emitter,                 //
-            'this': this,                       //引用自身，方便内部子模块使用。
-        };
-
-        mapper.set(this, meta);
-
-        Object.assign(this, {
-            'id': id,
-            'meta': meta,
-            '$': meta.$,
-        });
-
-    }
-
-
-    Pager.prototype = { //实例方法
-        constructor: Pager,
-
-        id: '',
-        $: null,
-
-        /**
-        * 
-        */
-        render: function (options) {
-            options = options || {};
-
-            let meta = mapper.get(this);
-            let total = typeof options.total == 'number' ? options.total : meta.total;
-            let size = typeof options.size == 'number' ? options.size : meta.size;
-            let min = typeof options.min == 'number' ? options.min : meta.min;
-            let no = typeof options.no == 'number' ? options.no : meta.no;
-            let count = Math.ceil(total / size);                //总的页数，计算得到，向上取整。   
-            let bind = !!meta.$;                                //是否已绑定。
-
-            //共 0 页的时候。
-            if (count == 0) {
-                meta.$ && meta.$.hide();
-                return;
-            }
-
-            //页码超出范围。
-            if (no < 1 || no > count) {
-                meta.emitter.fire('error', ['输入的页码值只能从 1 到 ' + count]);
-                return false;
-            }
-
-            meta.$ = this.$ = $(meta.ctn);
-            meta.count = count;
-            meta.no = no;
-            meta.total = total;
-            meta.size = size;
-            meta.min = min;
-
-
-            //首次渲染，绑定事件。
-            if (!bind) {
-                Events.bind(meta);
-            }
-
-
-            if (count < min) {
-                meta.$.hide();
-                return;
-            }
-
-            
-             
-            let Template = module.require('Template');
-            let regions = Regions.get(count, no);
-            let toNo = JumpNo.get(count, no, meta.last);
-
-            let html = Template.fill({
-                'regions': regions,
-                'no': no,
-                'count': count,
-                'total': total,
-                'toNo': toNo,
-                'txtId': meta.txtId,
-                'sizerId': meta.sizerId,
-                'sizes': meta.sizes,
-                'size': meta.size,
-            });
-
-            meta.$.html(html).show(); //要重新显示出来，之前可能隐藏了
-        },
-
-
-        /**
-        * 跳转到指定页码的分页。
-        * @param {number} no 要跳转的页码。
-        *   指定的值必须为从 1 ~ max 的整数，其中 max 为本控件最大的页码值。
-        *   如果指定了非法值，则会触发 error 事件。
-        */
-        to: function (no) {
-            let meta = mapper.get(this);
-            let emitter = meta.emitter;
-            let isValid = (/^\d+$/).test(no);
-
-            if (!isValid) {
-                emitter.fire('error', ['输入的页码必须是数字']);
-                return;
-            }
-
-            no = parseInt(no);
-
-            isValid = this.render({ 'no': no });
-            if (isValid === false) {
-                return;
-            }
-
-            meta.last = meta.no;
-            meta.no = no;
-
-
-            emitter.fire('change', [no, meta.size]);
-        },
-
-
-        /**
-        * 跳到上一页。
-        */
-        previous: function () {
-            let meta = mapper.get(this);
-            let no = meta.no - 1;
-            if (no < 1) {
-                return;
-            }
-
-            this.to(no);
-        },
-
-        /**
-        * 跳到下一页。
-        */
-        next: function () {
-            let meta = mapper.get(this);
-            let no = meta.no + 1;
-            let count = meta.count;
-            if (no > count) {
-                return;
-            }
-
-            this.to(no);
-        },
-
-        /**
-        * 跳到第一页。
-        */
-        first: function () {
-            this.to(1);
-        },
-
-        /**
-        * 跳到最后一页。
-        */
-        final: function () {
-            let meta = mapper.get(this);
-            let no = meta.count;
-            this.to(no);
-        },
-
-        /**
-        * 刷新当前页。
-        */
-        refresh: function () {
-            let meta = mapper.get(this);
-            let no = meta.no;
-            this.to(no);
-        },
-
-        /**
-        * 给本控件实例绑定事件。
-        */
-        on: function () {
-            let meta = mapper.get(this);
-            let emitter = meta.emitter;
-            let args = Array.from(arguments);
-            emitter.on(args);
-        },
-
-        /**
-        * 销毁本控件实例。
-        */
-        destroy: function () {
-            let meta = mapper.get(this);
-            let emitter = meta.emitter;
-
-            emitter.off();
-            meta.$ && meta.$.html('').undelegate();
-            mapper.delete(this);
-        },
-    };
-
-    return Pager;
-
-});
-
 
 
 define('Settings.Header', function (require, module, exports) {
@@ -7741,2403 +9788,6 @@ define('SidebarTree', function (require, module, exports) {
 
 
     return SidebarTree;
-});
-
-
-define('Table/Meta/Column', function (require, module, exports) {
-    const $String = require('@definejs/string');
-
-    return exports = {
-
- 
-        create: function (opt) {
-            let id = $String.random();  //列 id。
-
-            //列结构。
-            let column = {
-                'name': opt.name,       //列名。
-                'caption': opt.caption, //标题名。
-                'index': opt.index,     //列的索引值，即第几列。
-                'field': opt.field,     //该列的字段域。
-                'table': opt.table,     //表格实例的自身，方便业务使用。
-
-                'id': id,               //列 id，虚拟的，不用于生成 DOM id。
-                'cells': [],            //该列所包含的单元格集合。
-                'data': {},             //用户自定义数据容器。
-                'deps': [],             //
-                'infers': [],           //
-                'type': 'Table.Column', //类型。
-                'change': null,         //
-
-                //对当前的所有单元格进行求和。
-                'sum': function (fn) {
-                    let sum = 0;
-
-                    column.cells.map(function (cell, index) {
-                        let value = fn ? fn.call(opt.table, cell, index) : cell.value;
-
-                        if (value === null) {
-                            return;
-                        }
-
-                        value = value || 0;
-
-                        sum += value;
-                    });
-
-                    return sum;
-                },
-            };
-
-            return column;
-        },
-
-
-
-    };
-
-});
-
-
-
-
-/**
-* 
-*/
-define('Table/Meta', function (require, module, exports) {
-    const $String = require('@definejs/string');
-
-    const Column = module.require('Column');
-
-
-    return {
-
-        create: function (config, others) {
-            let count = config.count || config.details.length;
-            let name$column = {};
-            let id$column = {};
-
-
-            let columns = config.fields.map(function (field, index) {
-                let name = field[config.columnName];
-                let caption = field[config.captionName];
-
-                //列结构。
-                let column = Column.create({
-                    'name': name,           //列名。
-                    'caption': caption,     //标题名。
-                    'index': index,         //列的索引值，即第几列。
-                    'field': field,         //该列的字段域。
-                    'table': others.this,   //表格实例的自身，方便业务使用。
-                });
-
-                name$column[name] = column;
-                id$column[column.id] = column;
-
-                return column;
-            });
-
-
-
-            let meta = {
-                'id': $String.random(),
-
-                'fields': config.fields,            //列的字段数组。
-                'columnName': config.columnName,    //列名所在的字段名。
-                'captionName': config.captionName,  //列标题所在的字段名。
-                'details': config.details,          //原始的详情列表数据。
-                'container': config.container,            //表格的容器。
-                'width': config.width,              //表格宽度。
-                'class': config.class,              //css 类名。
-                'order': config.order,              //序号列。
-                'attributes': config.attributes,    //自定义属性。 会在 html 中生成 `data-` 的自定义属性。
-
-                'count': count,                     //首次要生成的行数。
-                'columns': columns,                 //所有的列集合。
-                'id$column': id$column,             //用随机 id 关联列。
-                'name$column': name$column,         //命名的列。
-
-                'rows': [],                         //所有的行记录集合。
-                'id$row': {},                       //用随机 id 关联表格行元数据。
-                'id$cell': {},                      //用随机 id 关联单元格元数据。
-
-                'emitter': null,                    //
-                'tpl': null,                        //模板实例。
-                'element': null,                    //对应的 DOM 元素。
-                '$': null,
-                '$tbody': null,                     //方便内部使用。
-                '$container': null,                 //$(container)
-                'this': null,                       //方便内部使用。
-            };
-
-
-
-
-            Object.assign(meta, others);
-
-
-           
-
-            return meta;
-           
-        },
-
-
-    };
-    
-});
-
-
-
-
-
-
-define('Table/Order', function (require, module, exports) {
-
-
-    let defaults = {
-        sample: '{order}',
-        add: true,
-        index: 0,
-    };
-
-
-    return exports = {
-
-        normalize: function (config) {
-            let order = config.order;
-
-            if (!order) {
-                return config;
-            }
-
-            if (order === true) {
-                order = {};
-            }
-
-            order = Object.assign({}, defaults, order);
-
-
-            let fields = config.fields.slice(0);
-            let item = { [config.columnName]: 'order', caption: '序号', };
-            let index = order.index;
-
-            if (order.add) {
-                fields.splice(index, 0, item); //在指定位置插入。
-            }
-            else {
-                fields[index] = item;
-            }
-
-    
-            config = Object.assign({}, config, {
-                'order': order,
-                'fields': fields,
-            });
-
-            return config;
-
-        },
-
-
-    };
-
-});
-
-
-
-
-
-define('Table/Reaction', function (require, module, exports) {
-    const $Object = require('@definejs/object');
-    
-
-    function set(name$column, name, deps, change) {
-        let column = name$column[name];
-
-        if (!column) {
-            console.warn('不存在名为 ' + name + ' 的列。');
-            return;
-        }
-
-        if (change) {
-            column.change = change;
-        }
-
-        if (!deps) {
-            return;
-        }
-
-        //因为单元格直接引用了列中的 deps 对象，
-        //这里要直接修改原对象，而不能设置为新的引用。
-        //下面的 col.infers 也如此。
-        column.deps.splice(0);      //清空原数组。
-        column.deps.push(...deps);  //压进新元素。
-
-        //反写到受影响的列中。
-        deps.map(function (dep) {
-            let col = name$column[dep];
-            if (!col) {
-                console.warn('不存在名为 ' + name + ' 的列。');
-                return;
-            }
-
-            let infers = col.infers;
-
-            infers = new Set(infers);
-            infers.add(name);
-
-            //infers = [...infers].map(function (name) {
-
-            //});
-
-            col.infers.splice(0);
-            col.infers.push(...infers);
-        });
-
-    }
-
-
-
-    return {
-        /**
-        * 设置列的单元格监听规则和处理函数。
-        * 已重载 set({ name: { deps: [], change: fn } }); 批量混写的情况 。
-        * 已重载 set({ name: deps }); 批量设置 deps 数组的情况。
-        * 已重载 set({ name: change }); 批号设置 change 函数的情况。
-        * 已重载 set(name, { deps: [], change: fn }); 单个混写的情况。
-        * 已重载 set(name, change); 单个设置 change 函数的情况。
-        * 已重载 set(name, deps); 单个设置 deps 数组的情况。
-        */
-        set: function (name, deps, change) {
-            let name$column = this;
-
-            //重载 set({  }); 批量的情况。
-            if ($Object.isPlain(name)) {
-                $Object.each(name, function (name, opt) {
-
-                    //重载 set({ name: [] });
-                    if (Array.isArray(opt)) {
-                        set(name$column, name, opt, null);
-                        return;
-                    }
-
-                    //重载 set({ name: function });
-                    if (typeof opt == 'function') {
-                        set(name$column, name, null, opt);
-                        return;
-                    }
-
-                    set(name$column, name, opt.deps, opt.change);
-
-                });
-
-                return;
-            }
-
-            //重载 set(name, { }); 单个混合的情况。
-            if ($Object.isPlain(deps)) {
-                let opt = deps;
-                set(name$column, name, opt.deps, opt.change);
-                return;
-            }
-
-
-            //重载 set(name, change); 的情况。
-            if (typeof deps == 'function') {
-                change = deps;
-                deps = null;
-            }
-
-
-            //单个分开的情况。
-            set(name$column, name, deps, change);
-            
-        },
-
-    };
-
-});
-
-
-
-
-
-define('Table/Row', function (require, module, exports) {
-    const $String = require('@definejs/string');
-
-    return exports = {
-        /**
-        * 创建并添加一个行记录，但不生成 html。
-        */
-        create: function (meta, detail) {
-            let rows = meta.rows;
-            let id = $String.random();  //行 id
-            let index = rows.length;
-            let data = Object.assign({}, detail);
-            let name$cell = {};
-
-            //行结构。
-            let row = meta.id$row[id] = {
-                'id': id,               //行 id。
-                'index': index,         //行索引。
-                'type': 'Table.Row',    //类型。
-                'cells': null,          //单元格集合。
-                'table': meta.this,     //表格实例的自身，方便业务使用。
-                'element': null,        //对应的 DOM 元素。
-                'data': data,           //用户自定义数据容器。
-                'name$cell': name$cell, //命名的单元格集合。
-                'value': null,          //该表格行的任意类型的值，由业务层写入。
-                'title': '',            //title 提示。
-                'class': '',            //css 类名。
-                'attributes': {         //生成到 html 中以 `data-` 开头的自定义属性。
-                    'index': index,
-                },
-            };
-
-            //提供一个快捷方法用于访问指定单元格的值。
-            row.valueOf = function (name) {
-                return name$cell[name].value;
-            };
-
-            row.cells = meta.fields.map(function (field, index) {
-                let id = $String.random();          //单元格 id
-                let column = meta.columns[index];   //当前列。
-                let isOrder = meta.order.index == index;  //是否为序号列。
-                let name = field[meta.columnName];
-                let caption = field[meta.captionName];
-
-                //单元格结构。
-                let cell = meta.id$cell[id] = {
-                    'id': id,               //单元格 id。
-                    'name': name,           //列名。
-                    'caption': caption,     //标题名。
-                    'type': 'Table.Cell',   //类型。
-                    'row': row,             //单元格所在的行引用。
-                    'field': field,         //单元格（列）的字段域。
-                    'index': index,         //所在的列的索引值。
-                    'isOrder': isOrder,       //是否为序号列。
-                    'column': column,       //所在的列引用。
-                    'table': meta.this,     //表格实例的自身，方便业务使用。
-                    'ctrl': null,           //用户控件。
-                    'element': null,        //对应的 DOM 元素。
-                    'value': null,          //该单元格的任意类型的值，由业务层写入。
-                    'data': {},             //用户自定义数据容器。
-                    'deps': column.deps,    //引用列中的数组，要注意引用关系。
-                    'infers': column.infers,//
-                    'title': '',            //title 提示。
-                    'html': '',             //单元格的 innerHTML。
-
-                    'class': field.class || '',     //css 类名。
-
-                    'attributes': {         //生成到 html 中以 `data-` 开头的自定义属性。
-                        'index': index,
-                        'name': name,
-                    },
-                };
-
-                //传入源单元格，避免联动形成回路。
-                //执行该方法，以告诉内部该 cell 发生了变化，从而产生联动。
-                cell.change = function (value, srcs) {
-                    srcs = srcs || [];
-                    srcs.push(cell);
-
-                    cell.value = value;
-
-                    console.log(srcs);
-
-
-                    //依次调用同一行受影响的单元格的 change() 方法。
-                    cell.infers.map(function (name) {
-                        let col = meta.name$column[name];
-                        let infer = name$cell[name];    //受影响的单元格。
-                        let change = col.change;        //受影响的单元格的处理器。
-
-                        ////第一个条件表示是因为 src 单元格的变化导致当前单元格(cell)发生变化，
-                        ////而当前单元格(cell)的变化又会导致 src 单元格(infer)变化，形成了回路。
-                        //if (infer === src || !change) {
-                        //    return;
-                        //}
-
-                        if (srcs.includes(infer) || !change) {
-                            return;
-                        }
-
-
-                        let value = change.apply(infer, [cell, srcs]);
-
-                        if (value !== undefined) {
-                            infer.value = value;
-                        }
-                    });
-
-                    meta.emitter.fire('change', cell.name, [cell]);
-                    meta.emitter.fire('change', [cell]);
-
-                };
-
-                column.cells.push(cell);
-                name$cell[name] = cell;
-
-                return cell;
-            });
-
-            rows.push(row);
-
-
-            return row;
-        },
-
-
-        add: function (meta, data) {
-            let no = meta.rows.length;
-
-            let row = exports.create(meta, data);
-            let html = meta.tpl.fill('tr', row, no);
-
-            //处理 UI 上的。
-            meta.$tbody.append(html);
-            row.element = document.getElementById(row.id);
-
-            row.cells.map(function (cell) {
-                cell.element = document.getElementById(cell.id);
-            });
-
-            return row;
-        },
-
-        /**
-        * 删除一个指定行号的表格行。
-        */
-        remove: function (meta, no) {
-            let rows = meta.rows;
-            let row = rows[no];
-
-
-            //从数据上删除。
-            rows.splice(no, 1);
-            delete meta.id$row[row.id];
-
-
-            row.cells.map(function (cell) {
-                let ctrl = cell.ctrl;
-
-                ctrl && ctrl.destroy();
-                delete meta.id$cell[cell.id];
-
-                cell.ctrl = null;
-                cell.element = null;
-            });
-
-
-            meta.columns.map(function (column, index) {
-                column.cells.splice(no, 1);
-            });
-
-
-            //从 UI 上删除。
-            let tr = row.element;
-            tr && tr.parentNode.removeChild(tr);
-            row.element = null;
-
-
-
-            //被删除的那一行之后的所有序号需要调整。
-            rows.slice(no).map(function (row, index) {
-                index = row.index = index + no;
-
-                //更新 tr 中的 `data-index`
-                if ('index' in row.attributes) {
-                    row.element.setAttribute('data-index', index);
-                    row.attributes.index = index;
-                }
-
-                if (meta.order) {
-                    let tpl = meta.tpl;
-                   
-                    row.cells.map(function (cell) {
-                        if (!cell.isOrder) {
-                            return;
-                        }
-
-                        let html = tpl.fill('tr', 'td', cell, 0, index);
-                        cell.element.innerHTML = html;
-                    });
-                }
-
-            });
-
-      
-
-            return row;
-
-        },
-
-        /**
-        * 把指定行号的表格行向前或向后移动若干步。
-        */
-        move: function (meta, index, step) {
-            let rows = meta.rows;
-            let targetIndex = index + step;
-
-            if (step == 0 || targetIndex < 0 || targetIndex > rows.length - 1) {
-                return;
-            }
-
-            let current = rows[index];
-            let target = rows[targetIndex];
-            let tbody = current.element.parentNode;
-
-            rows.splice(index, 1);
-            rows.splice(targetIndex, 0, current);
-
-            if (step > 0) {
-                tbody.insertBefore(target.element, current.element);
-            }
-            else {
-                tbody.insertBefore(current.element, target.element);
-            }
-
-
-            //需要调整序号。
-            rows.map(function (row, index) {
-                if (row.index == index) {
-                    return;
-                }
-
-                row.index = index;
-
-                //更新 tr 中的 `data-index`
-                if ('index' in row.attributes) {
-                    row.element.setAttribute('data-index', index);
-                    row.attributes.index = index;
-                }
-
-                meta.order && row.cells.map(function (cell) {
-                    if (!cell.isOrder) {
-                        return;
-                    }
-
-                    let html = meta.tpl.fill('tr', 'td', cell, 0, index);
-                    cell.element.innerHTML = html;
-                });
-
-            });
-
-            meta.emitter.fire('move', [current, step]);
-
-
-        },
-
-
-    };
-
-});
-
-
-
-
-
-define('Table/Static', function (require, module, exports) {
-    const $Object = require('@definejs/object');
-    
-
-    return exports = {
-        /**
-        * 迭代每个单元格，并执行回调函数。
-        * 已重载 eachCell(cell, fn);
-        * 已重载 eachCell(row, fn);
-        * 已重载 eachCell(column, fn);
-        * 已重载 eachCell(cells, fn);
-        * 已重载 eachCell(colomns, fn);
-        */
-        eachCell: function (list, fn) {
-            if (!Array.isArray(list)) {
-                list = [list];
-            }
-
-            let cells = [];
-
-            list.map(function (item) {
-                switch (item.type) {
-                    case 'Table.Cell':
-                        cells.push(item);
-                        break;
-
-                    case 'Table.Column':
-                    case 'Table.Row':
-                        cells = cells.concat(item.cells);
-                        break;
-
-                    default:
-                        throw new Error('无法识别的 type 值: ' + type);
-                }
-            });
-
-            cells.map(fn);
-        },
-
-        /**
-        * 迭代处理指定列的每个单元格，并执行回调函数。
-        * 已重载 column(table, fn);
-        * 已重载 column(row, fn);
-        * 已重载 column(rows, fn);
-        */
-        column: function (table, name, fn) {
-            let cells = [];
-
-            if (Array.isArray(table)) { //rows
-                let rows = table;
-                rows.map(function (row) {
-                    if (!exports.isRow(row)) {
-                        return;
-                    }
-
-                    let cell = row.name$cell[name];
-                    if (cell) {
-                        cells.push(cell);
-                    }
-                });
-            }
-            else if (exports.isRow(table)) { //row
-                let row = table;
-                let cell = row.name$cell[name];
-
-                if (cell) {
-                    cells.push(cell);
-                }
-            }
-            else { //table
-                let name$column = table.get('name$column');
-                let column = name$column[name];
-
-                if (column) {
-                    cells = column.cells || [];
-                }
-            }
-
-            cells.map(function (cell, index) {
-                fn(cell, index);
-            });
-        },
-
-        isCell: function (item) {
-            return $Object.isPlain(item) && item.type == 'Table.Cell';
-        },
-
-        isRow: function (item) {
-            return $Object.isPlain(item) && item.type == 'Table.Row';
-        },
-
-        isColumn: function (item) {
-            return $Object.isPlain(item) && item.type == 'Table.Column';
-        },
-
-    };
-
-});
-
-
-
-
-
-define('Table/Template', function (require, module) {
-    const Template = require('@definejs/template');
-    const $String = require('@definejs/string');
-
-
-    function stringify(attributes) {
-        if (!attributes) {
-            return '';
-        }
-
-        attributes = Object.entries(attributes).map(function (item) {
-            let key = item[0];
-            let value = item[1];
-            return 'data-' + key + '="' + value + '"';
-        });
-
-        return attributes.join(' ');
-    }
-
-    function getTitle(obj) {
-        let title = obj.title;
-
-        if (title === undefined || title === '') {
-            return '';
-        }
-
-        return 'title="' + title + '"';
-    }
-
-    function getClass(obj) {
-        let list = obj.class;
-        if (Array.isArray(list)) {
-            list = list.join(' ');
-        }
-
-        if (!list) {
-            return '';
-        }
-
-        return 'class="' + list + '"';
-       
-    }
-
-
-    return {
-        create: function (meta) {
-            let tpl = new Template('#tpl-Table');
-            let emitter = meta.emitter;
-
-
-            tpl.process({
-                '': function () {
-                    this.fix('attributes');
-
-                    let width = meta.width || '';
-
-                    if (width) {
-                        width = 'width: ' + width + 'px;';
-                    }
-
-                    let rows = this.fill('tr', meta.rows);
-                    let attributes = stringify(meta.attributes);
-                    let cssClass = meta.class || '';
-
-                    return {
-                        'id': meta.id,
-                        'class': cssClass + ' Table',
-                        'width': width,
-                        'rows': rows,
-                        'attributes': attributes,
-                    };
-                },
-                'tr': {
-                    '': function (row, no) {
-                        this.fix(['class', 'attributes', 'title']);
-
-                        emitter.fire('process', 'row', [row, no]);
-
-                        let attributes = stringify(row.attributes);
-                        let cells = this.fill('td', row.cells, no);
-                        let title = getTitle(row);
-                        let cssClass = getClass(row);
-
-                        return {
-                            'id': row.id,
-                            'class': cssClass,
-                            'attributes': attributes,
-                            'title': title,
-                            'cells': cells,
-                        };
-                    },
-
-                    'td': {
-                        '': function (cell, index, no) {
-                            this.fix(['class', 'attributes', 'title']);
-
-                            let html = '';
-
-                            if (cell.isOrder) {
-                                html = $String.format(meta.order.sample, {
-                                    'index': index,     //列索引。
-                                    'no': no,           //行索引。
-                                    'order': no + 1,    //行号。
-                                });
-                            }
-                            else {
-                                let values = emitter.fire('process', 'cell', cell.name, [cell, index]);
-                                html = values.slice(-1)[0]; //以最后一个为准。
-
-                                //具体命名单元格的事件没有返回值，则再次触发统一 cell 的事件。
-                                if (html === undefined) {
-                                    values = emitter.fire('process', 'cell', [cell, index]);
-                                    html = values.slice(-1)[0]; //以最后一个为准。
-                                }
-                          
-
-                                let type = typeof html;
-
-                                if (type == 'number' || type == 'boolean') {
-                                    html = String(html);
-                                }
-                            }
-
-                            let display = cell.field.visible === false ? 'display: none;' : '';
-                            let attributes = stringify(cell.attributes);
-                            let title = getTitle(cell);
-                            let cssClass = getClass(cell);
-
-                            return {
-                                'id': cell.id,
-                                'cid': cell.column.id, //列 id
-                                'html': html || '',
-                                'class': cssClass,
-                                'attributes': attributes,
-                                'display': display,
-                                'title': title,
-                            };
-                        },
-
-                    },
-                },
-            });
-
-            return tpl;
-
-        },
-
-    };
-
-});
-
-
-
-define('Table.defaults', {
-    '$': null,          //表格的容器。
-    'fields': [],       //列的字段数组。
-    'width': 0,         //表格宽度。
-    'widths': [],       //列的宽度。
-    'class': '',        //css class 类名。
-    'process': {},      //
-    'order': false,     //
-    'details': [],      //每一行的详情数据。
-    'columnName': 'fieldName',  //列的名称所在的字段名，即从 field[columnName] 中读取的值作为列名。
-    'captionName': 'caption',  //列的标题所在的字段名，即从 field[captionName] 中读取的值作为列标题，主要是为了方便调试时查看。
-});
-
-
-
-/**
-* 自定义表格。
-*/
-define('Table', function (require, module, exports) {
-    const $ = require('$');
-    const Emitter = require('@definejs/emitter');
-    const $Object = require('@definejs/object');
-
-    const Reaction = module.require('Reaction');
-    const Static = module.require('Static');
-    const Template = module.require('Template');
-    const Row = module.require('Row');
-    const Order = module.require('Order');
-    const Meta = module.require('Meta');
-
-    const defaults = require('Table.defaults');
-    let mapper = new Map();
-
-
-    /**
-    * 构造器。
-    */
-    function Table(config) {
-        config = Object.assign({}, defaults, config);
-        config = Order.normalize(config);
-
-        let emitter = new Emitter(this);
-
-        let meta = Meta.create(config, {
-            'emitter': emitter,         //
-            'this': this,               //方便内部使用。
-        });
-
-       
-
-        meta.tpl = Template.create(meta);
-        mapper.set(this, meta);
-
-
-        Object.assign(this, {
-            'id': meta.id,
-            'meta': meta,
-        });
-
-        for (let i = 0; i < meta.count; i++) {
-            this.new(meta.details[i]);
-        }
-
-
-        let reaction = config.reaction;
-        if (reaction) {
-            this.reaction(reaction);
-        }
-
-        //提供默认的单元格内容填充方式。
-        this.on('process', 'cell', function (cell) {
-            let item = cell.row.data || {};
-            return item[cell.name];
-        });
-
-    }
-
-
-
-
-    Table.prototype = {
-        constructor: Table,
-
-        id: '',
-        $: null,
-
-        render: function () {
-            let meta = mapper.get(this);
-            let rows = meta.rows;
-            let html = meta.tpl.fill({});
-
-            meta.$container = $(meta.container);
-
-            if (!meta.$container.length) {
-                throw new Error('不存在容器节点: ' + meta.container);
-            }
-
-            meta.$container.html(html);
-
-            meta.rows.map(function (row) {
-                row.element = document.getElementById(row.id);
-
-                row.cells.map(function (cell) {
-                    cell.element = document.getElementById(cell.id);
-                });
-            });
-
-            meta.element = document.getElementById(meta.id);
-            meta.$ = this.$ = $(meta.element);
-            meta.$tbody = meta.$.find('>tbody');
-
-
-           
-
-            meta.fields.forEach(function (field, index) {
-                let delegate = field.delegate;
-                if (!delegate) {
-                    return;
-                }
-
-                //统一转成数组来处理。
-                //外面传进来的 delegate 支持为单个的字符串，也支持多个字符串组成的数组。
-                let delegates = Array.isArray(delegate) ? delegate : [delegate];
-
-                delegates.forEach(function (delegate) {
-                    let selector = '>tr>td[data-name="' + field[meta.columnName] + '"] ' + delegate;
-
-                    meta.$tbody.on('click', selector, function (event) {
-                        let parents = $(this).parents().toArray();
-                        let len = parents.length;
-
-                        //向上追溯父节点，直到找到 id 符合注册的 cell 为止。
-                        //该算法是安全的，因为 id 是内部随机生成的，跟外面的冲突的概率很小。
-                        for (let i = 0; i < len; i++) {
-                            let el = parents[i];
-                            let id = el.id;
-                            let cell = meta.id$cell[id]; //根据 id 能找到注册的 cell。
-
-                            //触发四级事件。
-                            if (cell) {
-                                meta.emitter.fire('click', 'cell', cell.name, delegate, [cell, event, this]);
-                                break;
-                            }
-                        }
-                    });
-                });
-                
-            });
-
-            //单元格的点击事件。
-            meta.$tbody.on('click', '>tr>td', function (event) {
-                let cell = meta.id$cell[this.id];
-                meta.emitter.fire('click', 'cell', cell.name, [cell, event]);
-                meta.emitter.fire('click', 'cell', [cell, event]);
-            });
-
-            //表格行的点击事件。
-            meta.$tbody.on('click', '>tr', function (event) {
-                let row = meta.id$row[this.id];
-                meta.emitter.fire('click', 'row', [row, event]);
-            });
-
-            //整个表格的点击事件。
-            meta.$tbody.on('click', function (event) {
-                meta.emitter.fire('click', [event]);
-            });
-
-            meta.emitter.fire('render', [rows]);
-
-            return html;
-        },
-
-        /**
-        * 创新并添加一个行记录，但不生成 html。
-        */
-        new: function (detail) {
-            let meta = mapper.get(this);
-            let row = Row.create(meta, detail);
-            meta.emitter.fire('new', [row, detail]);
-            return row;
-        },
-
-
-        /**
-        * 添加一条或多条行记录。
-        */
-        add: function (data) {
-            let meta = mapper.get(this);
-
-            //重载 add([...]); 批量添加的情况。
-            if (Array.isArray(data)) {
-                let rows  = data.map(function (item) {
-                    return Row.add(meta, item);
-                });
-
-                meta.emitter.fire('add', [rows]);
-                return rows;
-            }
-
-            let row = Row.add(meta, data);
-            meta.emitter.fire('add', [row]);
-
-            return row;
-        },
-
-
-
-        /**
-        * 移除指定索引值的行记录。
-        * @param {Number} no 要移除的行号。 如果不指定，则为最后一行。
-        */
-        remove: function (no) {
-            let meta = mapper.get(this);
-
-            //如果不指定行号，则删除最后一行。
-            if (typeof no != 'number') {
-                no = meta.rows.length - 1;
-            }
-
-            let row = Row.remove(meta, no);
-
-            meta.emitter.fire('remove', [row, no]);
-        },
-
-        /**
-        * 把指定表格行向前或向后移动若干步。
-        * 已重载 move(index, step);
-        * 已重载 move(id, step);
-        * 已重载 move(row, step);
-        */
-        move: function (item, step) {
-            let meta = mapper.get(this);
-            let type = typeof item;
-
-            let row = type == 'number' ? meta.rows[item] :
-                type == 'string' ? meta.id$row[item] :
-                type == 'object' ? meta.id$row[item.id] : null;
-
-            if (!row) {
-                throw new Error('传入的参数 item 不属性当前 table 的表格行。');
-            }
-
-            Row.move(meta, row.index, step);
-        },
-
-
-        fill: function (list) {
-            this.clear();
-
-            let meta = mapper.get(this);
-
-            let rows = list.map(function (item) {
-                let row = this.new(item);
-                return row;
-
-            }, this);
-
-            let html = meta.tpl.fill('tr', rows);
-            meta.$tbody.html(html);
-
-
-            rows.map(function (row) {
-                row.element = document.getElementById(row.id);
-
-                row.cells.map(function (cell) {
-                    cell.element = document.getElementById(cell.id);
-                });
-            });
-
-            meta.emitter.fire('fill', [list]);
-        },
-
-
-        clear: function () {
-            let meta = mapper.get(this);
-
-            meta.rows.map(function (row) {
-                row.cells.map(function (cell) {
-                    let ctrl = cell.ctrl;
-                    ctrl && ctrl.destroy && ctrl.destroy();
-                });
-            });
-
-            meta.columns.map(function (column) {
-                column.cells.splice(0);
-            });
-
-            meta.id$row = {};
-            meta.id$cell = {};
-            meta.rows.splice(0);     //清空原数组。
-            meta.$tbody.html('');
-            meta.emitter.fire('clear');
-
-        },
-
-
-        /**
-        * 获取指定的属性值。
-        */
-        get: function (key) {
-            let meta = mapper.get(this);
-            let rows = meta.rows;
-
-            //重载 get(); 获取全部行。
-            if (arguments.length == 0) {
-                return rows;
-            }
-
-            //重载 get(no); 获取指定索引值的行。
-            if (typeof key == 'number') {
-                return rows[key];
-            }
-
-            switch (key) {
-                case 'id$row':
-                case 'id$cell':
-                case 'id$column':
-                case 'name$column':
-                case 'rows':
-                case 'columns':
-                case 'element':
-                case 'details':
-                    return meta[key];
-
-                case 'length':
-                    return rows.length;
-            }
-
-            //此时作为 id 去判断。
-            if (typeof key == 'string') {
-                return meta.id$cell[key] || 
-                    meta.id$row[key] || 
-                    meta.id$column[key];
-            }
-
-        },
-
-        set: function (key, value) {
-            let meta = mapper.get(this);
-
-            switch (key) {
-                case 'width':
-                    meta[key] = value;
-                    break;
-                //todo...
-            }
-        },
-
-        column: function (name, fn) {
-            let meta = mapper.get(this);
-            let column = meta.name$column[name];
-
-            if (!column) {
-                console.warn('不存在名为 ' + name + ' 的列。');
-                return;
-            }
-
-            column.cells.map(function (cell, index) {
-                fn && fn(cell, index);
-            });
-
-            return column;
-        },
-
-        /**
-        * 设置列的单元格监听规则和处理函数。
-        * 已重载 reaction({ name: { deps: [], change: fn } }); 批量混写的情况 。
-        * 已重载 reaction({ name: deps }); 批量设置 deps 数组的情况。
-        * 已重载 reaction({ name: change }); 批号设置 change 函数的情况。
-        * 已重载 reaction(name, { deps: [], change: fn }); 单个混写的情况。
-        * 已重载 reaction(name, change); 单个设置 change 函数的情况。
-        * 已重载 reaction(name, deps); 单个设置 deps 数组的情况。
-        */
-        reaction: function (name, deps, change) {
-            let meta = mapper.get(this);
-            Reaction.set.call(meta.name$column, ...arguments);
-        },
-
-
-        destroy: function () {
-            let meta = mapper.get(this);
-
-            //已销毁。
-            if (!meta) {
-                return;
-            }
-
-            let table = meta.element;
-
-            meta.tpl.destroy();
-            meta.emitter.destroy();
-            table.parentNode.removeChild(table);
-            meta.$tbody.off();
-            meta.$.off();
-
-            $Object.each(meta.id$cell, function (id, cell) {
-                let ctrl = cell.ctrl;
-                ctrl && ctrl.destroy && ctrl.destroy();
-            });
-
-            mapper.delete(this);
-
-        },
-
-        on: function () {
-            let meta = mapper.get(this);
-            meta.emitter.on(...arguments);
-        },
-
-  
-
-    };
-
-
-    //同时提供静态成员。
-    Object.assign(Table, Static);
-
-
-    return Table;
-
-});
-
-
-
-
-define('TableResizer/Mouse/Masker', function (require) {
-    const Masker = require('@definejs/masker');
-
-    let masker = null;
-
-
-    return {
-        show() {
-            masker = masker || new Masker({
-                // opacity: 0.5,
-                opacity: 0,
-            });
-
-            masker.show();
-        },
-
-        hide() {
-            masker && masker.hide();
-        },
-    };
-
-
-
-});
-
-
-define('TableResizer/Cols', function (require, module) {
-    const Template = require('@definejs/template');
-
-    let tpl = new Template('#tpl-TableResizer');
-
-    tpl.process({
-        'colgroup': {
-            '': function (data) {
-                let cols = this.fill('col', data.fields);
-
-                return {
-                    'cols': cols,
-                };
-            },
-
-            'col': function (field, index) {
-                return {
-                    'index': index,
-                    'width': field.width,
-                    'display': field.visible ? '' : 'display: none;',
-                };
-            },
-        },
-    });
-
-
-    return {
-        fill: function ($table, fields) {
-            let html = tpl.fill('colgroup', { 'fields': fields, });
-
-            $table.prepend(html);
-
-            let cols = $table.find('colgroup>col').toArray();
-            return cols;
-           
-        },
-
-
-    };
-
-});
-
-
-
-
-define('TableResizer/Fields', function (require, module) {
-
-    return {
-        normalize: function (list) {
-            list = list.map(function (field, index) {
-                field = Object.assign({}, field); //安全起见，避免多实例中互相影响。
-
-                let visible = ('visible' in field) ? field.visible : true;  //如果不指定则默认为 true。
-                let width = visible ? field.width || 0 : 0;
-
-                field.visible = !!visible;
-                field.dragable = field.dragable === false ? false : true; //只有显式指定了为 false 才禁用。
-
-                field.width = field.width || 0;
-
-                return field;
-
-            });
-
-            return list;
-        },
-
-        sum: function (list) {
-            let sum = 0;
-
-            list = list.map(function (field, index) {
-                if (!field.visible) {
-                    return;
-                }
-
-                sum += field.width;
-            });
-
-            return sum;
-        },
-
-    };
-
-});
-
-
-
-/**
-* 
-*/
-define('TableResizer/Meta', function (require, module, exports) {
-    const $String = require('@definejs/string');
-
-
-    return {
-
-        create: function (config, others) {
-
-            let meta = {
-                'id': $String.random(),         //
-                'emitter': null,                //
-                'table': null,                  //在 render() 后会变成 DOM 节点
-                '$': null,                      //在 render() 后会变成 $() 对象。
-                'this': null,                   //
-                'selector': config.table,       //原始的 table 选择器。
-                'dragable': config.dragable,    //是否允许拖曳。
-                'rowspan': config.rowspan,      //最大跨行数。 如果表头有跨行合并单元格，则要指定为最大跨行数。
-                'minWidth': config.minWidth,    //列所允许的最小宽度。
-                'indexKey': config.indexKey,    //
-                'cssClass': config.cssClass,    //
-                'fields': null,                 //列字段集合数组。
-                'width': 0,                     //表格总宽度。
-                'cols': [],                     //col 节点集合。
-                'id$index': {},                 //记录每个 resizer 对应的 index。
-                'cell$ids': new Map(),          //记录单元格的对应的 resizer 集合。
-            };
-
-            Object.assign(meta, others);
-
-            return meta;
-           
-        },
-
-
-    };
-    
-});
-
-
-
-
-define('TableResizer/Mouse', function (require, module, exports) {
-    const $ = require('$');
-    const Masker = module.require('Masker');
-
-
-    let id$meta = {};       //
-    let draging = false;    //表示鼠标左键是否已按下并还没释放。
-    let tdWidth = 0;        //鼠标按下时的 td 宽度。
-    let tableWidth = 0;
-    let x = 0;              //鼠标按下时的 pageX 值。
-    let cursor = '';        //鼠标按下时的 cursor 指针值。
-
-    let id = '';            //鼠标按下时的 target 元素的 id 值。
-    let $b = null;
-
-    let body = document.body;
-
-
-   
-
-
-
-
-
-
-    $(body).on({
-       
-        //开始按下鼠标左键。
-        'mousedown': function (event) {
-            id = event.target.id;
-
-            let meta = id$meta[id];
-
-            if (!meta) {
-                return;
-            }
-
-            let index = meta.id$index[id];
-            let field = meta.fields[index];
-            let isLast = index == meta.fields.length - 1; //是否为最后一列。
-
-            draging = true;
-            x = event.pageX;
-            cursor = body.style.cursor;
-            body.style.cursor = 'ew-resize';
-
-            tdWidth = field.width;
-
-            $b = $('#' + id + '>b');
-            $b.addClass('on');
-            $b.toggleClass('last', isLast);
-            $b.html(tdWidth + 'px');
-
-            Masker.show();
-            
-        },
-
-        //按住鼠标左键进行移动。
-        'mousemove': function (event) {
-            if (!draging) {
-                return;
-            }
-
-            let meta = id$meta[id];
-            let dx = event.pageX - x;   //delta width
-            let cw = tdWidth + dx;      //cell width
-
-            if (cw < meta.minWidth) {   //单元格宽度不能小于指定的最小宽度。
-                return;
-            }
-          
-
-
-            let fields = meta.fields;
-            let index = meta.id$index[id];
-            let col = meta.cols[index];
-            let tw = tableWidth = meta.width + dx;
-
-            col.width = fields[index].width = cw;
-            meta.$.width(tw);
-
-            $b.html(cw + 'px');
-
-            meta.emitter.fire('change', [{
-                'index': index,
-                'dx': dx,
-                'tdWidth': cw,
-                'width': tw,
-                'fields': fields,
-            }]);
-        },
-
-        //释放鼠标左键。
-        'mouseup': function () {
-            let meta = id$meta[id];
-            if (!meta) {
-                return;
-            }
-
-            meta.width = tableWidth;
-
-            id = '';
-            draging = false;
-
-            body.style.cursor = cursor;
-            Masker.hide();
-            $b && $b.removeClass('on');
-        },
-
-
-    });
-
-
-
-
-
-    return {
-
-        set: function (id, meta) {
-            id$meta[id] = meta;
-        },
-
-        remove: function (id) {
-            delete id$meta[id];
-        },
-
-    };
-});
-
-
-define('TableResizer/Rows', function (require, module) {
-    const $Array = require('@definejs/array');
-
-  
-    return {
-
-        get: function (table, rowspan) {
-            let rows = Array.from(table.rows).slice(0, rowspan);
-
-            let list = $Array.pad(0, rowspan).map(function () {
-                return [];
-            });
-            
-
-            rows.map(function (row, no) {
-                let baseX = 0;
-                let cells = list[no];
-                let len = cells.length;
-
-                if (len > 0) {
-                    //查找空位。
-                    baseX = cells.findIndex(function (cell) {
-                        return !cell;
-                    });
-
-                    //没有空位，则在最后加上。
-                    if (baseX < 0) {
-                        baseX = len;
-                    }
-                }
-
-                Array.from(row.cells).map(function (cell, index) {
-                    let rowspan = cell.getAttribute('rowspan');
-                    let colspan = cell.getAttribute('colspan');
-
-                    rowspan = Number(rowspan) || 1;
-                    colspan = Number(colspan) || 1;
-                   
-
-                    $Array.pad(0, rowspan).map(function (R) {
-                        let y = R + no;
-                        let cells = list[y];
-
-                        $Array.pad(0, colspan).map(function (C) {
-                            let x = baseX + C;
-                            cells[x] = cell;
-                        });
-                    });
-
-
-                    baseX += colspan;
-
-
-                    if (cells[baseX]) {
-                        baseX = cells.findIndex(function (cell) {
-                            return !cell;
-                        });
-
-                        if (baseX < 0) {
-                            baseX = cells.length;
-                        }
-                    }
-                });
-            });
-
-            return list;
-
-
-        },
-    };
-
-});
-
-
-
-define('TableResizer.defaults', {
-    dragable: true,   //�Ƿ����ҷ��
-    rowspan: 1,       //���������� �����ͷ�п��кϲ���Ԫ����Ҫָ��һ�����ڵ��� 2 ��ֵ��
-    minWidth: 20,     //������������С���ȡ�
-    indexKey: 'data-target-index',
-    cssClass: 'TableResizer',
-    fields: [],
-});
-
-
-
-define('TableResizer', function (require, module) {
-    const $ = require('$');
-    const $String = require('@definejs/string');
-    const Emitter = require('@definejs/emitter');
-    const Template = require('@definejs/template');
-
-    const Cols = module.require('Cols');
-    const Mouse = module.require('Mouse');
-    const Rows = module.require('Rows');
-    const Fields = module.require('Fields');
-    const Meta = module.require('Meta');
-
-    const defaults = require('TableResizer.defaults');
-    let mapper = new Map();
-    let tpl = new Template('#tpl-TableResizer');
-
-
-    function TableResizer(config) {
-        config = Object.assign({}, defaults, config);
-
-        let emitter = new Emitter(this);
-        let fields = Fields.normalize(config.fields);
-        let width = config.width || Fields.sum(fields);
-
-        let meta = Meta.create(config, {
-            'emitter': emitter,     //
-            'this': this,           //
-            'fields': fields,       //列字段集合。
-            'width': width,         //表格总宽度。
-        });
-
-        mapper.set(this, meta);
-
-        Object.assign(this, {
-            'id': meta.id,
-            'meta': meta,
-        });
-
-       
-    }
-
-    //实例方法。
-    TableResizer.prototype = {
-        constructor: TableResizer,
-
-        id: '',
-        $: null,
-
-
-        render: function () {
-            this.destroy(true); //弱销毁。
-
-            let meta = mapper.get(this);
-
-            meta.$ = this.$ = $(meta.selector);
-            meta.$.addClass(meta.cssClass);
-
-            let table = meta.table = meta.$.get(0);
-            let rows = Rows.get(table, meta.rowspan);
-
-
-            //指定了允许可拖曳，则在有效行(一般是第一行)的列之间生成 resizer 相应的 html。
-            meta.dragable && rows.map(function (cells) {
-
-                cells.map(function (cell, index) {
-                    let id = $String.random();
-                    let targetIndex = cell.getAttribute(meta.indexKey);
-
-                    //指定了要关联的目标列索引值，则只创建和保留对应的 resizer。
-                    if (targetIndex !== null) {
-                        let ids = meta.cell$ids.get(cell) || [];
-                        let nextIndex = ids.length;
-
-                        ids.push(id);
-                        meta.cell$ids.set(cell, ids);
-
-                        if (nextIndex != targetIndex) {
-                            return ;
-                        }
-                    }
-
-                    let field = meta.fields[index];
-
-                    let html = tpl.fill('resizer', {
-                        'id': id,
-                        'display': field.dragable === false ? 'display: none;' : '',
-                    });
-
-                    $(cell).append(html);
-
-                    meta.id$index[id] = index;
-                    Mouse.set(id, meta);
-
-                    return;
-                });
-            });
-            
-            meta.cols = Cols.fill(meta.$, meta.fields);
-
-            meta.$.width(meta.width);
-            meta.emitter.fire('render', [meta.width, meta.fields]);
-
-        },
-
-        /**
-        * 设置指定索引号的列宽和整个表格的宽度。
-        */
-        set: function (data) {
-            let index = data.index;
-            let width = data.width;
-            let tdWidth = data.tdWidth;
-
-            let meta = mapper.get(this);
-
-            meta.fields[index].width = tdWidth;
-            meta.cols[index].width = tdWidth;
-            meta.width = width;
-
-            meta.$.width(width);
-
-        },
-
-
-        on: function () {
-            let meta = mapper.get(this);
-
-            meta.emitter.on(...arguments);
-        },
-
-        destroy: function (weak) {
-            let meta = mapper.get(this);
-
-            Object.keys(meta.id$index).map(function (id) {
-                Mouse.remove(id);
-
-                let el = document.getElementById(id);
-                el && el.parentNode.removeChild(el);
-            });
-
-
-            //当指定 weak 为 true 时，表示是弱销毁，一般是内部调用。
-            if (!weak) {
-                let cg = meta.$.find('>colgroup').get(0);
-                cg && cg.parentNode.removeChild(cg);
-
-                meta.emitter.destroy();
-                meta.$.removeClass(meta.cssClass);
-                mapper.delete(this);
-            }
-          
-        },
-    };
-
-    return TableResizer;
-});
-
-
-define('TextTree/Events', function (require, module, exports) {
-
-    const $ = require('$');
-
-    let id$closed = {};
-
-    //向下检查看是否有父亲节点是处于关闭状态。
-    function checkParentClosed(id, id$parent) {
-        let pid;
-        let closed;
-
-        do {
-            pid = id$parent[id];
-            closed = id$closed[pid];
-            id = pid;
-        }
-        while (typeof pid == 'string' && !closed);
-        
-        return closed;
-    }
-
-
-
-
-    return {
-        bind: function (meta) {
-
-            let cmdSelector = `#${meta.id} [data-cmd]`;
-
-            $(document.body).on('click', cmdSelector, function (event) {
-                let { cmd, index, } = event.currentTarget.dataset;
-                if (cmd == 'icon-dir') {
-                    return;
-                }
-
-                index = Number(index);
-
-                let item = meta.items[index];
-                item = meta.id$item[item.id];
-
-                meta.emitter.fire('cmd', cmd, [item]);
-                meta.emitter.fire('cmd', [cmd, item]);
-            });
-
-
-            $(document.body).on('click', cmdSelector, function (event) {
-                let { cmd, index, } = event.currentTarget.dataset;
-
-                if (cmd != 'icon-dir') {
-                    return;
-                }
-
-
-                let $icon = $(this);
-                let item = meta.items[index];
-                let { id, } = item;
-
-                //剪头向右时，说明当明是折叠状态（即关闭状态），下一步需要展开。
-                let needOpen = $icon.hasClass('closed');
-                let liSelector = `#${meta.id} li[data-id^="${id}${meta.seperator}"]`;
-
-                $icon.toggleClass('closed', !needOpen);
-                id$closed[id] = !needOpen;
-
-                console.log(id$closed)
-
-
-                $(liSelector).each(function () {
-                    let $li = $(this);
-                  
-                    //需要关闭。
-                    if (!needOpen) {
-                        $li.slideUp('fast');
-                        return;
-                    }
-
-
-                    //需要打开。
-                    let { id, } = this.dataset;
-                    let isParentClosed = checkParentClosed(id, meta.id$parent);
-
-                    if (isParentClosed) {
-                        $li.slideUp('fast');
-                    }
-                    else {
-                        $li.slideDown('fast');
-                    }
-
-                    
-                });
-
-
-                
-            });
-            
-          
-
-
-
-           
-        },
-
-    };
-});
-
-/**
-* 
-*/
-define('TextTree/Meta', function (require, module, exports) {
-    const $String = require('@definejs/string');
-    const Tree = require('@definejs/tree');
-
-    let count = 0;
-
-    
-    function makeData(list, seperator) {
-        let id$item = {};
-        let id$parent = {};
-        let id$parents = {};
-        let id$childs = {};
-        let id$children = {};
-        let id$siblings = {};
-        let id$index = {};
-
-        let ids = list.map((item, index) => {
-            let { id, } = item;
-            let names = id.split(seperator);
-            let name = names.slice(-1)[0];
-            let parent = null;
-            let parents = [];
-
-            id$item[id] = item;
-
-            if (names.length > 1) {
-                let pid = parent = names.slice(0, -1).join(seperator); //父模块 id。
-                let childs = id$childs[pid] || [];
-
-                childs.push(id);
-                id$childs[pid] = childs;
-
-                parents = names.map((name, index) => {
-                    return names.slice(0, index + 1).join('/');
-                });
-                parents = parents.reverse();
-                parents = parents.slice(1);
-            }
-
-            id$parent[id] = parent;
-            id$parents[id] = parents;
-
-
-            return id;
-        });
-
-
-        ids.forEach((id, index) => {
-            //收集指定模块下的所有子模块（包括间接子模块）。
-            let children = ids.filter((mid) => {
-                return mid.startsWith(`${id}${seperator}`);
-            });
-
-            id$children[id] = children;
-            id$index[id] = index;
-
-            let parent = id$parent[id];
-
-            if (typeof parent == 'string') {
-                let childs = id$childs[parent] || [];
-
-                //从兄弟结点中过滤掉自己。
-                let siblings = childs.filter((mid) => {
-                    return mid != id;
-                });
-
-                id$siblings[id] = [...new Set(siblings)];
-            }
-        });
-
-
-        let info = { ids, id$item, id$children, id$childs, id$parent, id$parents, id$siblings, id$index, };
-
-        console.log(info);
-        return info;
-    }
-
-
-
-    return {
-
-        create: function (config, others) {
-            let id = `TextTree-${count++}-${$String.random(4)}`;
-
-            let meta = {
-                id,
-                'seperator': config.seperator,
-                'secondaryKey': config.secondaryKey,
-                'container': config.container,
-                'emptyText': config.emptyText,
-
-                'showSecondary': config.showSecondary,
-                'showIcon': config.showIcon,
-                'showTab': config.showTab,
-                'showColor': config.showColor,
-                'showHover': config.showHover,
-                
-                'highlightIndex': -1, //当前高亮的项。
-
-
-                'items': [],        //tree 渲染后对应的列表，排序可能跟传入的 list 不同，以渲染后的为准。
-                'id$item': {},
-                'id$index': {},
-                'id$children': {},
-                'id$childs': {},
-                'id$parent': {},
-                'id$parents': {},
-                'id$siblings': {},
-
-                'tree': null,
-                '$': null,
-                'this': null,
-                'emitter': null,
-                'tpl': null,
-
-                'makeData': function (list, seperator) {
-                    list = list || [];
-                    seperator = seperator || meta.seperator;
-
-                    let data = makeData(list, seperator);
-
-                    Object.assign(meta, {
-                        'id$item': data.id$item,
-                        'id$index': data.id$index,
-                        'id$children': data.id$children,
-                        'id$childs': data.id$childs,
-                        'id$parent': data.id$parent,
-                        'id$parents': data.id$parents,
-                        'id$siblings': data.id$siblings,
-                    });
-
-                    return data;
-                },
-
-                'toggleHideClass': function (cls, visible) {
-                    if (!meta.$) {
-                        return;
-                    }
-
-                    if (typeof visible == 'boolean') {
-                        meta.$.toggleClass(cls, !visible);
-                    }
-                    else {
-                        meta.$.toggleClass(cls);
-                    }
-                },
-
-
-            };
-
-            let { ids, } = meta.makeData(config.list);
-            meta.tree = new Tree(ids, meta.seperator);
-
-            Object.assign(meta, others);
-
-
-
-            return meta;
-           
-        },
-
-
-    };
-    
-});
-
-
-
-
-
-define('TextTree/Template', function (require, module, exports) {
-    const Template = require('@definejs/template');
-
-
-
-
-    return {
-        create: function (meta) {
-            let tpl = new Template('#tpl-TextTree');
-
-            function fill(name, data) {
-                let html = tpl.fill(name, data);
-
-                html = html.trim();
-                html = html.split('\n').join('');
-                return html;
-            }
-
-            tpl.process({
-                '': function (data) {
-                    let items = this.fill('item', data.list);
-
-                    return {
-                        'id': data.id,
-                        'items': items,
-                        'hide-tab': meta.showTab ? '' : 'hide-tab',
-                        'hide-icon': meta.showIcon ? '' : 'hide-icon',
-                        'hide-secondary': meta.showSecondary ? '' : 'hide-secondary',
-                        'hide-color': meta.showColor ? '' : 'hide-color',
-                        'hide-hover': meta.showHover ? '' : 'hide-hover',
-                    };
-                },
-
-
-                'item': function (item, index) {
-                    let { tabs, key, linker, id, } = item;
-                    let children = meta.id$children[id] || [];
-                    let isDir = children.length > 0;
-
-                    key = key || meta.emptyText;
-                    tabs = fill('tabs', item);
-                    key = fill('key', { key, index, id, isDir, });
-                    linker = fill('linker', item);
-
-                    return {
-                        id,
-                        tabs,
-                        linker,
-                        key,
-                        index,
-                        'type': isDir ? 'dir' : 'file',
-                        'not-found': meta.id$item[id] ? '' : 'not-found', //该项可能不存在。
-                    };
-                },
-
-                'tabs': function (data) {
-                    let { tabs, } = data;
-                    let count = 0;
-
-                    tabs = tabs.split('').map(function (item, index) {
-                        item = item.trim();
-                        count++;
-
-                        if (item.length > 0) {
-                            count = 0;
-                        }
-
-                        let cls = '';
-
-
-                        //首项没有内容的，也当是一个分组。
-                        if ((!item && index == 0) || count == 4) {
-                            cls = 'grouper';
-                            count = 0;
-                        }
-
-                        let b = fill('b', {
-                            'class': cls,
-                            'text': item,
-                        });
-
-                        return b;
-                    });
-
-                    return { tabs, };
-                },
-
-                'key': {
-                    '': function (data) {
-                        let secondary = this.fill('secondary', data); //可能返回空串。
-                        let icon = this.fill('icon', data);
-
-                        return {
-                            ...data,
-                            icon,
-                            secondary,
-                        };
-                    },
-
-                    'icon': function ({ isDir, }) {
-
-                        return {
-                            'type': isDir ? 'dir': 'file',
-                            'icon': isDir ? 'fas fa-angle-down' : 'far fa-circle',
-                        };
-
-                    },
-
-                    'secondary': function (data) {
-                        let { secondaryKey, } = meta;
-
-                        //如果不指定对应的 key，则不生成 html 内容。
-                        if (!secondaryKey) {
-                            return '';
-                        }
-
-                        let index = data.index;
-                        let item = meta.id$item[data.id];
-                        if (!item) {
-                            return {}
-                        }
-
-                        let secondary = item[secondaryKey];
-
-                        return { secondary, secondaryKey, index, };
-                    },
-                },
-
-
-            });
-
-
-            return tpl;
-
-        },
-
-    };
-});
-
-define('TextTree.defaults', {
-    seperator: '/',
-    emptyText: '(app)',
-    secondaryKey: '', //副内容的字段名，如果指定则显示。
-    showSecondary: false,
-    showIcon: false,
-    showTab: false,
-    showColor: false,
-    showHover: false,
-});
-
-/**
-* 菜单树。
-*/
-define('TextTree', function (require, module, exports) {
-    const Emitter = require('@definejs/emitter');
-    const $Object = require('@definejs/object');
-    const $ = require('$');
-    const Events = module.require('Events');
-    const Meta = module.require('Meta');
-    const Template = module.require('Template');
-
-    const defaults = require('TextTree.defaults');
-    let mapper = new Map();
-
-    class TextTree {
-
-        constructor(config) {
-            config = Object.assign({}, defaults, config);
-
-            let emitter = new Emitter(this);
-
-            let meta = Meta.create(config, {
-                'this': this,
-                'emitter': emitter,
-            });
-
-            meta.tpl = Template.create(meta);
-
-            mapper.set(this, meta);
-
-            Object.assign(this, {
-                'id': meta.id,
-                '$': meta.$,
-            });
-
-            Events.bind(meta);
-
-        }
-
-
-        render(list) {
-            let meta = mapper.get(this);
-
-            if (list) {
-                let { ids, } = meta.makeData(list);
-                meta.tree.clear();
-
-                ids.forEach((id) => {
-                    let keys = id.split(meta.seperator);
-
-                    meta.tree.set(keys);
-                });
-            }
-            
-            // debugger;
-            // meta.tree = meta.tree.spawn(['htdocs']);
-            
-            let items = meta.tree.render(function (node, info) {
-                let { key, nodes, keys, value, } = node;
-                let { tabs, linker, content, } = info;
-                let id = keys.join(meta.seperator);
-
-                return { id, tabs, key, linker, };
-            });
-
-            meta.items = items;
-
-
-            let html = meta.tpl.fill({
-                'id': meta.id,
-                'list': items,
-            });
-
-
-            if (meta.container) {
-                $(meta.container).html(html);
-                meta.$ = meta.this.$ = $(`#${meta.id}`);
-            }
-
-            return html;
-
-        }
-
-        toString(withSecondary) {
-            let meta = mapper.get(this);
-
-            //如果没有指定 withSecondary，则根据当前界面的状态来判断。
-            if (withSecondary === undefined && meta.$) {
-                withSecondary = !meta.$.hasClass('hide-secondary');
-            }
-
-            let texts = meta.tree.render(function (node, info) {
-                let { key, nodes, keys, value, } = node;
-                let { tabs, linker, content, } = info;
-                let secondary = '';
-
-                if (withSecondary) {
-                    let id = keys.join(meta.seperator);
-                    let item = meta.id$item[id];
-                    secondary = item[meta.secondaryKey];
-                }
-
-                let s = `${tabs}${linker} ${key || meta.emptyText}`;
-
-                if (secondary) {
-                    s = s + ' ' + secondary;
-                }
-
-                return s;
-            });
-
-            let content = texts.join('\n');
-
-            return content;
-        }
-
-        on(...args) {
-            let meta = mapper.get(this);
-
-            meta.emitter.on(...args);
-        }
-
-        toggle(opt) {
-            let meta = mapper.get(this);
-
-            if ($Object.isPlain(opt)) {
-                $Object.each(opt, function (key, showValue) {
-                    meta.toggleHideClass(`hide-${key}`, showValue);
-                });
-            }
-            else {
-                meta.$.toggle(opt);
-            }
-        }
-
-        highlight(id) {
-            let meta = mapper.get(this);
-            let index = meta.id$index[id];
-
-            if (index < 0) {
-                console.warn(`不存在 id 为 ${id} 的项。`)
-                return;
-            }
-
-            if (meta.highlightIndex) {
-                meta.$.find(`[data-cmd="id"][data-index="${meta.highlightIndex}"]`).removeClass('on');
-            }
-
-            meta.$.find(`[data-cmd="id"][data-index="${index}"]`).addClass('on');
-            meta.highlightIndex = index;
-        }
-        
-    }
-
-    
-
-    return TextTree;
-});
-
-define('$', function (require, module, exports) {
-    return window.definejs.require('jquery');
 });
 
 /**
@@ -12824,7 +12474,6 @@ define.panel('/FileList/Body/Main/List/Dir/Filter', function (require, module, p
 
 
 define.panel('/FileList/Body/Main/List/Dir/GridView', function (require, module, panel) {
-    const $Date = require('@definejs/date');
     const GridView = require('GridView');
     const File = require('File');
 
@@ -12842,31 +12491,26 @@ define.panel('/FileList/Body/Main/List/Dir/GridView', function (require, module,
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
-
             fields: [
-                { caption: '路径', name: 'name', width: 600, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '大小', name: 'size', width: 95, class: 'size number', dragable: true, },
-                { caption: '文件数', name: 'files', width: 74, class: 'files number', dragable: true, },
-                { caption: '目录数', name: 'dirs', width: 74, class: 'dirs number', dragable: true, },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '路径', name: 'name', width: 600, class: 'name', click: '[data-cmd]', },
+                { caption: '大小', name: 'size', width: 95, class: 'size number', },
+                { caption: '文件数', name: 'files', width: 74, class: 'files number', },
+                { caption: '目录数', name: 'dirs', width: 74, class: 'dirs number', },
             ],
 
         });
 
-        gridview.on('process', 'row', function (row) {
-            
-        });
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'name': function (cell) {
-                let item = cell.row.data;
-                let name = item.name;
-                let icon = File.getIcon(item.item);
-                
+                let { name, raw, } = cell.row.item;
+                let icon = File.getIcon(raw);
+
                 if (meta.keyword) {
                     name = name.split(meta.keyword).join(meta.keywordHtml);
                 }
@@ -12888,27 +12532,16 @@ define.panel('/FileList/Body/Main/List/Dir/GridView', function (require, module,
 
         gridview.on('click', 'cell', {
             'name': {
-                '': function (cell, event) {
-
-                },
-
-                '[data-cmd]': function (cell, event) {
-                    event.stopPropagation();
-                    let item = cell.row.data.item;
+                '[data-cmd]': function (cell, { event, }) {
+                    let item = cell.row.item.raw;
                     panel.fire('item', [item]);
+                    event.stopPropagation();
 
                 },
             },
         });
 
-        gridview.on('click', 'table', function (table, event) {
-            table.column('name', function (cell) {
-                $(cell.element).removeClass('text');
-            });
-        });
 
-
-        gridview.render();
 
 
     });
@@ -12933,10 +12566,10 @@ define.panel('/FileList/Body/Main/List/Dir/GridView', function (require, module,
         list = list.map(function (item, index) {
             let isFile = item.type == 'file';
             let size = File.getSizeDesc(item.size);
-            let {  name, } = item;
+            let { name, } = item;
 
             if (isFile) {
-      
+
             }
             else { //目录。
                 name += '/';
@@ -12948,12 +12581,17 @@ define.panel('/FileList/Body/Main/List/Dir/GridView', function (require, module,
                 'size': size.value + ' ' + size.desc,
                 'dirs': item.dirs.length,
                 'files': item.files.length,
-                'item': item, //点击时会用到。
+                'raw': item,       //点击时会用到。
             };
 
         });
 
-        gridview.fill(list);
+
+        //内部分页。
+        gridview.render(list, {
+            no: 1,
+            size: 20,
+        });
 
     });
 
@@ -12970,8 +12608,8 @@ define('/FileList/Body/Main/List/Dir/Data', function (require, module, exports) 
         dirs: [],
     };
 
-    function filter(list, data, fn) {
-        if (data) {
+    function filter(list, condition, fn) {
+        if (condition) {
             list = list.filter(fn);
         }
 
@@ -13094,7 +12732,7 @@ define('/FileList/Body/Main/List/Dir/Data', function (require, module, exports) 
 
 
             if (!cwd) {
-                list = filter(list, childDirs, function (item) {
+                list = filter(list, childDirs.length > 0, function (item) {
                     let { name, } = item;
 
                     let isOK = childDirs.some((dir) => {
@@ -13656,10 +13294,8 @@ define.panel('/FileList/Body/Main/List/File/Filter', function (require, module, 
 
 
 define.panel('/FileList/Body/Main/List/File/GridView', function (require, module, panel) {
-    const $Date = require('@definejs/date');
     const GridView = require('GridView');
     const File = require('File');
-
 
     let gridview = null;
     let tpl = null;
@@ -13674,33 +13310,28 @@ define.panel('/FileList/Body/Main/List/File/GridView', function (require, module
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                { caption: '路径', name: 'name', width: 600, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '大小', name: 'size', width: 70, class: 'size number', dragable: true, },
-                { caption: '编码', name: 'isUTF8', width: 80, class: 'utf8', dragable: true, },
-                { caption: 'MD5', name: 'md5', width: 285, class: 'md5', dragable: true, },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '路径', name: 'name', width: 600, class: 'name', click: '[data-cmd]', },
+                { caption: '大小', name: 'size', width: 70, class: 'size number', },
+                { caption: '编码', name: 'isUTF8', width: 80, class: 'utf8', },
+                { caption: 'MD5', name: 'md5', width: 285, class: 'md5', },
             ],
 
-        });
-
-        gridview.on('process', 'row', function (row) {
-            row.class = row.data.item.type;
         });
 
 
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
             'name': function (cell) {
-                let item = cell.row.data;
+                let item = cell.row.item;
                 let name = item.name;
-                let icon = File.getIcon(item.item);
-                
+                let icon = File.getIcon(item.raw);
+
                 if (meta.keyword) {
                     name = name.split(meta.keyword).join(meta.keywordHtml);
                 }
@@ -13714,7 +13345,7 @@ define.panel('/FileList/Body/Main/List/File/GridView', function (require, module
             },
 
             'md5': function (cell) {
-                let item = cell.row.data.item;
+                let item = cell.row.item.raw;
                 let { md5, files, } = item;
                 let lastItem = files.slice(-1)[0];
 
@@ -13728,31 +13359,18 @@ define.panel('/FileList/Body/Main/List/File/GridView', function (require, module
             },
         });
 
-       
+
 
         gridview.on('click', 'cell', {
             'name': {
-                '': function (cell, event) {
+                '[data-cmd]': function (cell, { event, }) {
+                    let item = cell.row.item.raw;
 
-                },
-
-                '[data-cmd]': function (cell, event) {
-                    event.stopPropagation();
-                    let item = cell.row.data.item;
                     panel.fire('item', [item]);
-
+                    event.stopPropagation();
                 },
             },
         });
-
-        gridview.on('click', 'table', function (table, event) {
-            table.column('name', function (cell) {
-                $(cell.element).removeClass('text');
-            });
-        });
-
-
-        gridview.render();
 
 
     });
@@ -13767,6 +13385,7 @@ define.panel('/FileList/Body/Main/List/File/GridView', function (require, module
     *   },    
     */
     panel.on('render', function (list, opt = {}) {
+        
         let keyword = meta.keyword = opt.keyword || '';
         let root = opt.root || '';
 
@@ -13774,46 +13393,28 @@ define.panel('/FileList/Body/Main/List/File/GridView', function (require, module
             meta.keywordHtml = '<span class="keyword">' + keyword + '</span>';
         }
 
-        gridview.$.toggleClass('md5-repeat-mode', opt.isMd5Mode);
-
-
-
         list = list.map(function (item, index) {
             let stat = item.stat;
-
-
-            let birthtime = $Date.format(stat.birthtime, 'yyyy-MM-dd HH:mm:ss');
-            let mtime = $Date.format(stat.mtime, 'yyyy-MM-dd HH:mm:ss');
-
-            let isFile = item.type == 'file';
             let size = File.getSizeDesc(stat.size);
             let { isUTF8, name, } = item;
 
-            if (isFile) {
-                //name = name.startsWith('/') ? name.slice(1) : name; //根目录的文件，去掉首字符的 `/`。
-            }
-            else { //目录。
-                name += '/';
-            }
-
-
             return {
                 'name': root + name,
-                'typeDesc': isFile ? item.ext.slice(1) + ' 文件' : '目录',
                 'size': size.value + ' ' + size.desc,
-                'birthtime': birthtime,
-                'mtime': mtime,
-                'isUTF8': isFile ? (isUTF8 ? 'UTF8' : '其它') : '',
+                'isUTF8': isUTF8 ? 'UTF8' : '其它',
                 'md5': item.md5,
-                'item': item, //点击时会用到。
+                'raw': item,       //点击时会用到。
             };
 
         });
 
+        //内部分页。
+        gridview.render(list, {
+            no: 1,
+            size: 20,
+        });
 
-
-
-        gridview.fill(list);
+        gridview.$.toggleClass('md5-repeat-mode', opt.isMd5Mode);
 
     });
 
@@ -13833,8 +13434,8 @@ define('/FileList/Body/Main/List/File/Data', function (require, module, exports)
         md5$files: {},
     };
 
-    function filter(list, data, fn) {
-        if (data) {
+    function filter(list, condition, fn) {
+        if (condition) {
             list = list.filter(fn);
         }
 
@@ -13951,7 +13552,7 @@ define('/FileList/Body/Main/List/File/Data', function (require, module, exports)
             });
 
             if (!cwd) {
-                list = filter(list, childDirs, function (item) {
+                list = filter(list, childDirs.length > 0, function (item) {
                     let { name, } = item;
 
                     let isOK = childDirs.some((dir) => {
@@ -14225,7 +13826,7 @@ define.panel('/FileList/Body/Main/Tree/Header', function (require, module, panel
 
 
     let chks = [
-        // { id: 'file', text: '文件', chk: null, },
+        
         { id: 'icon', text: '图标', chk: null,},
         { id: 'tab', text: '缩进', chk: null, },
         { id: 'color', text: '彩色', chk: null, },
@@ -14301,7 +13902,6 @@ define.panel('/FileList/Body/Main/Tree/Main', function (require, module, panel) 
     panel.on('init', function () {
         tree = new TextTree({
             'container': panel.$,
-            // 'secondaryKey': 'id',   //如果不指定，则不生成对应的 html 内容。
         });
 
         tree.on('cmd', function (cmd, item) {
@@ -14317,11 +13917,20 @@ define.panel('/FileList/Body/Main/Tree/Main', function (require, module, panel) 
     panel.on('render', function (opt) {
         let { id, list, } = opt;
 
+        list = list.map((item) => {
+            let keys = item.id.split('/');
+
+            return {
+                'keys': keys,
+            };
+        });
+
+
         tree.render(list);
 
-        if (typeof id == 'string') {
-            tree.highlight(id);
-        }
+        // if (typeof id == 'string') {
+        //     tree.highlight(id);
+        // }
 
 
         panel.fire('render');
@@ -17116,7 +16725,7 @@ define('/Home/Server/Status', function (require, module, exports) {
         test: function (server) {
             let url = Query.add(`${config.url}sse/Terminal.exec`, {
                 cmd: 'echo',
-                args: JSON.stringify(['hello']),
+                args: JSON.stringify([`Server is runnig, tested from '${module.id}'`]),
             });
 
             let status = true;
@@ -17265,7 +16874,7 @@ define.view('/Home', function (require, module, view) {
 
 define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Children/GridView', function (require, module, panel) {
     const GridView = require('GridView');
- 
+
 
     let gridview = null;
     let tpl = null;
@@ -17275,18 +16884,14 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Children/GridView', function (re
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                // { caption: 'id', name: 'id', width: 200, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '节点名称', name: 'name', width: 300, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 500, class: 'file', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '下级个数', name: 'list', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                // { caption: 'id', name: 'id', width: 200, class: 'name', },
+                { caption: '节点名称', name: 'name', width: 300, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 500, class: 'file', },
+                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', },
+                // { caption: '下级个数', name: 'list', width: 74, class: 'number', },
             ],
 
         });
@@ -17298,8 +16903,12 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Children/GridView', function (re
 
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'name': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -17310,7 +16919,7 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Children/GridView', function (re
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -17320,23 +16929,21 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Children/GridView', function (re
                 return html;
             },
 
-          
+
 
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
 
             if (cmd) {
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
+                panel.fire('cmd', [cmd, cell.row.item]);
             }
 
         });
-       
 
-        gridview.render();
 
 
     });
@@ -17349,9 +16956,9 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Children/GridView', function (re
     */
     panel.on('render', function (list) {
 
-      
 
-        gridview.fill(list);
+
+        gridview.render(list);
 
     });
 
@@ -17362,7 +16969,7 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Children/GridView', function (re
 
 define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Childs/GridView', function (require, module, panel) {
     const GridView = require('GridView');
- 
+
 
     let gridview = null;
     let tpl = null;
@@ -17372,18 +16979,14 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Childs/GridView', function (requ
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                // { caption: 'id', name: 'id', width: 200, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '节点名称', name: 'name', width: 300, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 500, class: 'file', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '下级个数', name: 'list', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                // { caption: 'id', name: 'id', width: 200, class: 'name', },
+                { caption: '节点名称', name: 'name', width: 300, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 500, class: 'file', },
+                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', },
+                // { caption: '下级个数', name: 'list', width: 74, class: 'number', },
             ],
 
         });
@@ -17395,8 +16998,12 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Childs/GridView', function (requ
 
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'name': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -17407,7 +17014,7 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Childs/GridView', function (requ
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -17417,23 +17024,22 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Childs/GridView', function (requ
                 return html;
             },
 
-          
+
 
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
 
             if (cmd) {
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
+                panel.fire('cmd', [cmd, cell.row.item]);
             }
 
         });
-       
 
-        gridview.render();
+
 
 
     });
@@ -17446,9 +17052,8 @@ define.panel('/HtmlTree/Main/HtmlBlock/BaseInfo/Childs/GridView', function (requ
     */
     panel.on('render', function (list) {
 
-      
 
-        gridview.fill(list);
+        gridview.render(list);
 
     });
 
@@ -18109,7 +17714,7 @@ define.panel('/HtmlTree/Main/HtmlBlock', function (require, module, panel) {
 
 define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView', function (require, module, panel) {
     const GridView = require('GridView');
- 
+
 
     let gridview = null;
     let tpl = null;
@@ -18119,18 +17724,14 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView', function (req
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                // { caption: 'id', name: 'id', width: 200, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '节点名称', name: 'name', width: 300, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 500, class: 'file', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '下级个数', name: 'list', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                // { caption: 'id', name: 'id', width: 200, class: 'name', },
+                { caption: '节点名称', name: 'name', width: 300, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 500, class: 'file', },
+                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', },
+                // { caption: '下级个数', name: 'list', width: 74, class: 'number', },
             ],
 
         });
@@ -18142,8 +17743,12 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView', function (req
 
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'name': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -18154,7 +17759,7 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView', function (req
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -18164,23 +17769,22 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView', function (req
                 return html;
             },
 
-          
+
 
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
 
             if (cmd) {
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
+                panel.fire('cmd', [cmd, cell.row.item]);
             }
 
         });
-       
 
-        gridview.render();
+
 
 
     });
@@ -18193,9 +17797,9 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView', function (req
     */
     panel.on('render', function (list) {
 
-      
 
-        gridview.fill(list);
+
+        gridview.render(list);
 
     });
 
@@ -18206,7 +17810,7 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView', function (req
 
 define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Childs/GridView', function (require, module, panel) {
     const GridView = require('GridView');
- 
+
 
     let gridview = null;
     let tpl = null;
@@ -18216,18 +17820,13 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Childs/GridView', function (requi
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
-
             fields: [
-                // { caption: 'id', name: 'id', width: 200, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '节点名称', name: 'name', width: 300, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 500, class: 'file', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
-                // { caption: '下级个数', name: 'list', width: 74, class: 'number', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                // { caption: 'id', name: 'id', width: 200, class: 'name', },
+                { caption: '节点名称', name: 'name', width: 300, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 500, class: 'file', },
+                // { caption: '内容行数', name: 'lines', width: 74, class: 'number', },
+                // { caption: '下级个数', name: 'list', width: 74, class: 'number', },
             ],
 
         });
@@ -18239,8 +17838,12 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Childs/GridView', function (requi
 
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'name': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -18251,7 +17854,7 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Childs/GridView', function (requi
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -18261,23 +17864,22 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Childs/GridView', function (requi
                 return html;
             },
 
-          
+
 
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
 
             if (cmd) {
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
+                panel.fire('cmd', [cmd, cell.row.item]);
             }
 
         });
-       
 
-        gridview.render();
+
 
 
     });
@@ -18290,9 +17892,9 @@ define.panel('/HtmlTree/Main/HtmlLink/BaseInfo/Childs/GridView', function (requi
     */
     panel.on('render', function (list) {
 
-      
 
-        gridview.fill(list);
+
+        gridview.render(list);
 
     });
 
@@ -24359,17 +23961,23 @@ define('/ModuleTree/Main/Dependent/List/Data', function (require, module, export
 
             list = list.sort();
 
+          
+
             list = list.map((id) => {
                 if (!checkValid(id)) {
                     return null;
                 }
 
                 let module = id$module[id];
-                let list = id$dependents[id] || [];
+                let list = id$dependents[id]; //可能是一个空串。
 
                 if (typeof list == 'string') {
                     list = [list];
                 }
+
+                //要放在判断 list 是否为 string 的后面。
+                //因为 list 可能为一个空串(definejs.launch()定义的模块)。
+                list = list || [];
 
                 list = list.map((id) => {
                     let module = id$module[id];
@@ -24430,10 +24038,11 @@ define('/ModuleTree/Main/Dependent/List/GridView', function (require, module, ex
 
 
     let fields = [
-        { caption: '模块ID', name: 'id', width: 300, class: 'name', dragable: true, delegate: '[data-cmd]', },
-        { caption: '定义方法', name: 'method', width: 110, class: 'file', dragable: true, delegate: '[data-cmd]', },
-        { caption: '级别', name: 'level', width: 49, class: 'number level', dragable: true, },
-        { caption: '所在文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+        { caption: '序号', name: 'order', width: 40, class: 'order', },
+        { caption: '模块ID', name: 'id', width: 300, class: 'name', },
+        { caption: '定义方法', name: 'method', width: 110, class: 'file', },
+        { caption: '级别', name: 'level', width: 49, class: 'number level', },
+        { caption: '所在文件', name: 'file', width: 400, class: 'file', },
     ];
 
 
@@ -24449,32 +24058,31 @@ define('/ModuleTree/Main/Dependent/List/GridView', function (require, module, ex
 
             let gridview = new GridView({
                 container: container,
-                primaryKey: 'id',
-                check: false,
-                order: true,
-                class: '',
-                footer: false,
                 fields: fields,
             });
 
             gridview.on('process', 'cell', {
+                'order': function (cell, { no, }) {
+                    return no + 1;
+                },
+
                 'id': function (cell) {
-                    let item = cell.row.data;
-                    let html = `<a data-cmd="id" href="javascript:">${item.id}</a>`;
+                    let { item, } = cell.row;
+                    let html = `<a data-cmd="id">${item.id}</a>`;
 
                     return html;
                 },
 
                 'file': function (cell) {
-                    let item = cell.row.data;
-                    let html = `<a data-cmd="file" href="javascript:">${item.file}</a>`;
+                    let { item, } = cell.row;
+                    let html = `<a data-cmd="file">${item.file}</a>`;
 
                     return html;
                 },
             });
 
-            gridview.on('click', 'cell', function (cell, event) {
-                let cmd = event.target.dataset.cmd;
+            gridview.on('click', 'cell', function (cell, { event, }) {
+                let { cmd, } = event.target.dataset;
 
                 if (cmd) {
                     event.stopPropagation();
@@ -24484,8 +24092,7 @@ define('/ModuleTree/Main/Dependent/List/GridView', function (require, module, ex
             });
 
 
-            gridview.render();
-            gridview.fill(list);
+            gridview.render(list);
 
             return gridview;
         },
@@ -24571,7 +24178,7 @@ define.panel('/ModuleTree/Main/Dependent/List', function (require, module, panel
                     'list': item.list,
 
                     'cmdClick': function (cmd, cell) {
-                        panel.fire('cmd', [cmd, cell.row.data]);
+                        panel.fire('cmd', [cmd, cell.row.item]);
                     },
                 });
                
@@ -25172,7 +24779,8 @@ define.panel('/ModuleTree/Main/List/Filter', function (require, module, panel) {
 
 
     panel.on('render', function (data, fields) {
-        Fields.render(fields);
+        // Fields.render(fields); //暂时隐藏，因为 gridview 还没实现显示/隐藏指定的列。
+        
         Childs.render(data.childs);
         ChildDependents.render();
         Dependents.render();
@@ -25204,17 +24812,18 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
     let gridview = null;
 
     let fields = [
-        { caption: '模块ID', name: 'id', width: 300, class: 'name', dragable: true, delegate: '[data-cmd]', },
-        { caption: '定义方法', name: 'method', width: 110, class: 'file', dragable: true, delegate: '[data-cmd]', },
-        { caption: '级别', name: 'level', width: 49, class: 'number level', dragable: true, },
-        { caption: '被依赖模块数', name: 'dependents', width: 61, class: 'number dependents', dragable: true, },
-        { caption: '所依赖公共模块数', name: 'publics', width: 73, class: 'number publics', dragable: true, },
-        { caption: '所依赖私有模块数', name: 'privates', width: 73, class: 'number privates', dragable: true, },
-        { caption: '直接子模块数', name: 'childs', width: 61, class: 'number childs', dragable: true, },
-        { caption: '全部子模块数', name: 'children', width: 61, class: 'number children', dragable: true, },
-        { caption: '同级模块数', name: 'siblings', width: 61, class: 'number siblings', dragable: true, },
-        { caption: '所在的 js 文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
-        // { caption: '关联的 html 文件', name: 'htmlFile', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+        { caption: '序号', name: 'order', width: 40, class: 'order', },
+        { caption: '模块ID', name: 'id', width: 300, class: 'name', },
+        { caption: '定义方法', name: 'method', width: 110, class: 'file', },
+        { caption: '级别', name: 'level', width: 49, class: 'number level', },
+        { caption: '被依赖模块数', name: 'dependents', width: 61, class: 'number dependents', },
+        { caption: '所依赖公共模块数', name: 'publics', width: 73, class: 'number publics', },
+        { caption: '所依赖私有模块数', name: 'privates', width: 73, class: 'number privates', },
+        { caption: '直接子模块数', name: 'childs', width: 61, class: 'number childs', },
+        { caption: '全部子模块数', name: 'children', width: 61, class: 'number children', },
+        { caption: '同级模块数', name: 'siblings', width: 61, class: 'number siblings', },
+        { caption: '所在的 js 文件', name: 'file', width: 400, class: 'file', },
+        // { caption: '关联的 html 文件', name: 'htmlFile', width: 400, class: 'file', },
     ];
 
 
@@ -25228,6 +24837,7 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
         let htmls = list.map((file) => {
             let html = tpl.fill('href', {
                 'cmd': 'file',
+                'value': file,
                 'text': file,
             });
 
@@ -25250,11 +24860,6 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
             fields: fields,
         });
 
@@ -25277,19 +24882,24 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
         });
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
-                    'text': item.id,
+                    'value': item.id,
+                    'text': item.id || module.data.none,
                 });
 
                 return html;
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
                 let { html, count, } = fillFile(item.file);
                 if (count > 1) {
                     cell.class += ' error';
@@ -25299,7 +24909,7 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
             },
 
             'htmlFile': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
                 let { html, count, } = fillFile(item.htmlFile);
                 if (count > 1) {
                     cell.class += ' error';
@@ -25310,20 +24920,17 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, value, } = event.target.dataset;
 
             if (!cmd) {
                 return;
             }
 
-            event.stopPropagation();
 
-            let value = event.target.text;
             panel.fire('cmd', [cmd, value]);
+            event.stopPropagation();
         });
-
-        gridview.render();
 
 
     });
@@ -25336,8 +24943,13 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
     */
     panel.on('render', function (list) {
 
-        gridview.fill(list);
+        gridview.render(list);
 
+        // //内部分页。
+        // gridview.render(list, {
+        //     no: 1,
+        //     size: 20,
+        // });
 
     });
 
@@ -25345,9 +24957,9 @@ define.panel('/ModuleTree/Main/List/GridView', function (require, module, panel)
     return {
         fields,
 
-        toggleFields(index$checked) {
-            gridview.toggleFields(index$checked);
-        },
+        // toggleFields(index$checked) {
+        //     gridview.toggleFields(index$checked);
+        // },
     };
 
 
@@ -25379,173 +24991,6 @@ define.panel('/ModuleTree/Main/List/Header', function (require, module, panel) {
     });
 
 
-
-
-
-});
-
-
-
-define('/ModuleTree/Main/List/Data0', function (require, module, exports) {
-    let meta = {
-        item: null,
-        stat: null,
-    };
-
-   
-    return {
-        init({ item, stat, }) {
-            console.log(item);
-
-            meta.item = item;
-            meta.stat = stat;
-          
-            let { list, children, } = item;
-            let methods = new Set();
-            let levels = new Set();
-
-
-            children.forEach((item) => {
-                let { level, method, } = item.data.module;
-
-                methods.add(method);
-                levels.add(level);
-            });
-
-            return {
-                'methods': [...methods],
-                'levels': [...levels],
-                'childs': list,             //直接子节点。
-            };
-           
-        },
-
-        filter(opt) {
-            let {
-                child$checked = null,
-                childDependent$checked = null,
-                dependent$checked = null,
-                level$checked = null,
-                method$checked = null,
-            } = opt || {};
-
-            let { item, stat, } = meta;
-            let { id, children, } = item.data;
-            let {
-                ids,
-                id$file,
-                id$dependents,
-                id$children,
-                id$childs,
-                id$publics,
-                id$privates,
-                id$parents,
-                id$siblings,
-                id$module,
-            } = stat.moduleStat;
-
-            if (typeof id == 'string') {
-                ids = [id, ...children,];
-            }
-
-            let list = [];
-
-            ids.forEach((id) => {
-                let file = id$file[id];
-                let htmlFile = stat.htmlStat.id$file[id];
-                
-                let dependents = id$dependents[id] || [];
-                let childs = id$childs[id] || [];
-                let children = id$children[id] || [];
-                let siblings = id$siblings[id] || [];
-                let publics = id$publics[id] || [];
-                let privates = id$privates[id] || [];
-                let parents = id$parents[id] || [];
-
-                let module = id$module[id];
-                let { level, method, } = module;
-
-                if (typeof dependents == 'string') {
-                    dependents = [dependents];
-                }
-
-                if (child$checked) {
-                    let found = [id, ...parents].some((id) => {
-                        return child$checked[id];
-                    });
-
-                    if (!found) {
-                        return;
-                    }
-                }
-
-
-
-
-                //被依赖模块数。
-                if (dependent$checked) {
-                    let N = dependents.length;
-                      //`N=0` 没有勾选。
-                    if (!dependent$checked['N=0'] && N == 0) {
-                        return;
-                    }
-
-                    //`N>0` 没有勾选。
-                    if (!dependent$checked['N>0'] && N > 0) {
-                        return;
-                    }
-                }
-
-                //所依赖私有模块数 - 直接子模块数
-                if (childDependent$checked) {
-                    let N = privates.length - childs.length;
-
-                    //`N > 0` 没有勾选。
-                    if (!childDependent$checked['N>0'] && N > 0) {
-                        return;
-                    }
-
-                    //`N = 0` 没有勾选。
-                    if (!childDependent$checked['N=0'] && N == 0) {
-                        return;
-                    }
-
-                    //`N < 0` 没有勾选。
-                    if (!childDependent$checked['N<0'] && N < 0) {
-                        return;
-                    }
-                }
-
-
-                if (level$checked && !level$checked[level]) {
-                    return;
-                }
-
-                if (method$checked && !method$checked[method]) {
-                    return;
-                }
-
-
-                let item = {
-                    'id': id,
-                    'file': file,
-                    'method': method,
-                    'level': level,
-                    'childs': childs.length,            //直接子模块数。
-                    'children': children.length,
-                    'dependents': dependents.length,    //
-                    'publics': publics.length,
-                    'privates': privates.length,        //所依赖私有模块数。
-                    'siblings': siblings.length,
-                    'htmlFile': htmlFile,
-                };
-
-                list.push(item);
-            });
-
-            return list;
-        },
-    };
 
 
 
@@ -25736,8 +25181,8 @@ define.panel('/ModuleTree/Main/List', function (require, module, panel) {
                 let list = Data.filter(opt);
                 GridView.render(list);
 
-                console.log(opt)
-                GridView.toggleFields(opt.field$checked);
+                // console.log(opt)
+                // GridView.toggleFields(opt.field$checked);
             },
         });
 
@@ -25772,38 +25217,34 @@ define.panel('/ModuleTree/Main/List', function (require, module, panel) {
 
 define.panel('/ModuleTree/Main/ModuleInfo/Children/GridView', function (require, module, panel) {
     const GridView = require('GridView');
- 
+
 
     let gridview = null;
     let tpl = null;
-  
+
 
     panel.on('init', function () {
         tpl = panel.template();
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                { caption: '模块ID', name: 'id', width: 400, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '模块ID', name: 'id', width: 400, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 400, class: 'file', },
             ],
 
         });
 
-        gridview.on('process', 'row', function (row) {
-            
-            
-        });
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -25814,7 +25255,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Children/GridView', function (require,
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -25827,17 +25268,16 @@ define.panel('/ModuleTree/Main/ModuleInfo/Children/GridView', function (require,
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
+            let { item, } = cell.row;
 
             if (cmd) {
+                panel.fire('cmd', [cmd, item]);
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
             }
 
         });
-
-        gridview.render();
 
 
     });
@@ -25850,9 +25290,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Children/GridView', function (require,
     */
     panel.on('render', function (list) {
 
-      
-
-        gridview.fill(list);
+        gridview.render(list);
 
     });
 
@@ -25863,7 +25301,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Children/GridView', function (require,
 
 define.panel('/ModuleTree/Main/ModuleInfo/Childs/GridView', function (require, module, panel) {
     const GridView = require('GridView');
- 
+
 
     let gridview = null;
     let tpl = null;
@@ -25873,28 +25311,23 @@ define.panel('/ModuleTree/Main/ModuleInfo/Childs/GridView', function (require, m
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                { caption: '模块ID', name: 'id', width: 400, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '模块ID', name: 'id', width: 400, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 400, class: 'file', },
             ],
-
-        });
-
-        gridview.on('process', 'row', function (row) {
-
 
         });
 
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -25905,7 +25338,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Childs/GridView', function (require, m
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -25915,23 +25348,19 @@ define.panel('/ModuleTree/Main/ModuleInfo/Childs/GridView', function (require, m
                 return html;
             },
 
-          
-
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
+            let { item, } = cell.row;
 
             if (cmd) {
+                panel.fire('cmd', [cmd, item]);
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
             }
 
         });
-       
-
-        gridview.render();
 
 
     });
@@ -25944,9 +25373,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Childs/GridView', function (require, m
     */
     panel.on('render', function (list) {
 
-      
-
-        gridview.fill(list);
+        gridview.render(list);
 
     });
 
@@ -25962,33 +25389,28 @@ define.panel('/ModuleTree/Main/ModuleInfo/Dependents/GridView', function (requir
     let gridview = null;
     let tpl = null;
   
-
     panel.on('init', function () {
         tpl = panel.template();
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                { caption: '模块ID', name: 'id', width: 400, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '模块ID', name: 'id', width: 400, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 400, class: 'file', },
             ],
 
         });
 
-        gridview.on('process', 'row', function (row) {
-
-
-        });
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -25999,7 +25421,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Dependents/GridView', function (requir
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -26009,19 +25431,19 @@ define.panel('/ModuleTree/Main/ModuleInfo/Dependents/GridView', function (requir
                 return html;
             },
 
+
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
+            let { item, } = cell.row;
 
             if (cmd) {
+                panel.fire('cmd', [cmd, item]);
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
             }
 
         });
-
-        gridview.render();
 
 
     });
@@ -26034,9 +25456,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Dependents/GridView', function (requir
     */
     panel.on('render', function (list) {
 
-      
-
-        gridview.fill(list);
+        gridview.render(list);
 
     });
 
@@ -26052,35 +25472,28 @@ define.panel('/ModuleTree/Main/ModuleInfo/Privates/GridView', function (require,
     let gridview = null;
     let tpl = null;
   
-
     panel.on('init', function () {
         tpl = panel.template();
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                { caption: '模块ID', name: 'id', width: 400, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '模块ID', name: 'id', width: 400, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 400, class: 'file', },
             ],
 
         });
 
-        gridview.on('process', 'row', function (row) {
-            if (!row.data.file) {
-                row.class = 'not-found';
-            }
-        });
-
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -26091,11 +25504,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Privates/GridView', function (require,
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
-
-                if (!item.file) {
-                    return '不存在';
-                }
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -26104,21 +25513,20 @@ define.panel('/ModuleTree/Main/ModuleInfo/Privates/GridView', function (require,
 
                 return html;
             },
-            
+
+
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
+            let { item, } = cell.row;
 
             if (cmd) {
+                panel.fire('cmd', [cmd, item]);
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
             }
-            
-        });
-       
 
-        gridview.render();
+        });
 
 
     });
@@ -26131,9 +25539,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Privates/GridView', function (require,
     */
     panel.on('render', function (list) {
 
-      
-
-        gridview.fill(list);
+        gridview.render(list);
 
     });
 
@@ -26155,39 +25561,34 @@ define.panel('/ModuleTree/Main/ModuleInfo/Publics/GridView', function (require, 
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                { caption: '模块ID', name: 'id', width: 400, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]',},
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '模块ID', name: 'id', width: 400, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 400, class: 'file', },
             ],
 
         });
 
-        gridview.on('process', 'row', function (row) {
 
-
-        });
-        
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
-                let id = item.id;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
-                    'text': id,
+                    'text': item.id,
                 });
 
                 return html;
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -26197,20 +25598,19 @@ define.panel('/ModuleTree/Main/ModuleInfo/Publics/GridView', function (require, 
                 return html;
             },
 
+
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
+            let { item, } = cell.row;
 
             if (cmd) {
+                panel.fire('cmd', [cmd, item]);
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
             }
 
         });
-       
-
-        gridview.render();
 
 
     });
@@ -26223,9 +25623,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Publics/GridView', function (require, 
     */
     panel.on('render', function (list) {
 
-      
-
-        gridview.fill(list);
+        gridview.render(list);
 
     });
 
@@ -26247,26 +25645,23 @@ define.panel('/ModuleTree/Main/ModuleInfo/Siblings/GridView', function (require,
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
 
             fields: [
-                { caption: '模块ID', name: 'id', width: 400, class: 'name', dragable: true, delegate: '[data-cmd]', },
-                { caption: '所在文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+                { caption: '序号', name: 'order', width: 40, class: 'order', },
+                { caption: '模块ID', name: 'id', width: 400, class: 'name', },
+                { caption: '所在文件', name: 'file', width: 400, class: 'file', },
             ],
 
         });
 
-        gridview.on('process', 'row', function (row) {
-            
-        });
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'id',
@@ -26277,7 +25672,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Siblings/GridView', function (require,
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'cmd': 'file',
@@ -26287,21 +25682,19 @@ define.panel('/ModuleTree/Main/ModuleInfo/Siblings/GridView', function (require,
                 return html;
             },
 
-        
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, } = event.target.dataset;
+            let { item, } = cell.row;
 
             if (cmd) {
+                panel.fire('cmd', [cmd, item]);
                 event.stopPropagation();
-                panel.fire('cmd', [cmd, cell.row.data]);
             }
 
         });
-
-        gridview.render();
 
 
     });
@@ -26314,9 +25707,7 @@ define.panel('/ModuleTree/Main/ModuleInfo/Siblings/GridView', function (require,
     */
     panel.on('render', function (list) {
 
-      
-
-        gridview.fill(list);
+        gridview.render(list);
 
     });
 
@@ -26363,8 +25754,8 @@ define.panel('/ModuleTree/Main/ModuleInfo/Base', function (require, module, pane
         meta.item = item;
         
         panel.fill({
-            'id': module.id,
-            'name': module.name,
+            'id': module.id || none,
+            'name': module.name || none,
             'parent': parent || '',
             'method': module.method,
             'factory-type': module.factory.type,
@@ -27037,10 +26428,11 @@ define.panel('/ModuleTree/Main/Pair/GridView', function (require, module, panel)
     let gridview = null;
 
     let fields = [
-        { caption: '模块ID', name: 'id', width: 300, class: 'name', dragable: true, delegate: '[data-cmd]', },
-        // { caption: '级别', name: 'level', width: 49, class: 'number level', dragable: true, },
-        { caption: '所在的 js 文件', name: 'file', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
-        { caption: '关联的 html 文件', name: 'htmlFile', width: 400, class: 'file', dragable: true, delegate: '[data-cmd]', },
+        { caption: '序号', name: 'order', width: 40, class: 'order', },
+        { caption: '模块ID', name: 'id', width: 300, class: 'name', },
+        // { caption: '级别', name: 'level', width: 49, class: 'number level',  },
+        { caption: '所在的 js 文件', name: 'file', width: 400, class: 'file', },
+        { caption: '关联的 html 文件', name: 'htmlFile', width: 400, class: 'file', },
     ];
 
 
@@ -27057,6 +26449,7 @@ define.panel('/ModuleTree/Main/Pair/GridView', function (require, module, panel)
             let html = tpl.fill('href', {
                 'icon': icon.html,
                 'cmd': 'file',
+                'value': file,
                 'text': file,
             });
 
@@ -27079,36 +26472,37 @@ define.panel('/ModuleTree/Main/Pair/GridView', function (require, module, panel)
 
         gridview = new GridView({
             container: panel.$,
-            primaryKey: 'id',
-            check: false,
-            order: true,
-            class: '',
-            footer: false,
             fields: fields,
         });
 
         gridview.on('process', 'row', function (row) {
-            let item = row.data;
+            let { item, } = row;
+
             if (item.htmlFile && !item.file) {
                 row.class = 'error';
             }
         });
 
         gridview.on('process', 'cell', {
+            'order': function (cell, { no, }) {
+                return no + 1;
+            },
+
             'id': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
 
                 let html = tpl.fill('href', {
                     'icon': '',
                     'cmd': 'id',
-                    'text': item.id,
+                    'value': item.id,
+                    'text': item.id || module.data.none,
                 });
 
                 return html;
             },
 
             'file': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
                 let { html, count, } = fillFile(item.file);
                 if (count > 1) {
                     cell.class += ' error';
@@ -27118,7 +26512,7 @@ define.panel('/ModuleTree/Main/Pair/GridView', function (require, module, panel)
             },
 
             'htmlFile': function (cell) {
-                let item = cell.row.data;
+                let { item, } = cell.row;
                 let { html, count, } = fillFile(item.htmlFile);
                 if (count > 1) {
                     cell.class += ' error';
@@ -27129,20 +26523,19 @@ define.panel('/ModuleTree/Main/Pair/GridView', function (require, module, panel)
 
         });
 
-        gridview.on('click', 'cell', function (cell, event) {
-            let cmd = event.target.dataset.cmd;
+        gridview.on('click', 'cell', function (cell, { event, }) {
+            let { cmd, value, } = event.target.dataset;
 
             if (!cmd) {
                 return;
             }
 
-            event.stopPropagation();
 
-            let value = event.target.text;
+
             panel.fire('cmd', [cmd, value]);
+            event.stopPropagation();
         });
 
-        gridview.render();
 
 
     });
@@ -27155,14 +26548,14 @@ define.panel('/ModuleTree/Main/Pair/GridView', function (require, module, panel)
     */
     panel.on('render', function (list) {
 
-        gridview.fill(list);
+        gridview.render(list);
 
 
     });
 
 
     return {
-     
+
     };
 
 
@@ -27238,8 +26631,9 @@ define('/ModuleTree/Main/Pair/Data', function (require, module, exports) {
 
             //非根节点，则要包括当前节点。
             if (item.parent) {
-                let pid = id === '' ? '/' : id;
+                let pid = `${id}/`; // id 可能为空串，此时展现为 '(app)'
 
+                //过滤出所有的子节点。
                 list = ids.filter((mid) => {
                     return mid.startsWith(pid);
                 });
@@ -27358,6 +26752,7 @@ define.panel('/ModuleTree/Main/Pair', function (require, module, panel) {
 
 
     panel.on('render', function (opt) {
+        
         Data.init(opt);
 
         Header.render();
@@ -27382,7 +26777,7 @@ define.panel('/ModuleTree/Main/Tree/Header', function (require, module, panel) {
  
 
     let chks = [
-        { id: 'secondary', text: '文件', chk: null, },
+        { id: 'value', text: '文件', chk: null, },
         { id: 'icon', text: '图标', chk: null, },
         { id: 'tab', text: '缩进', chk: null, },
         { id: 'color', text: '彩色', chk: null, },
@@ -27455,11 +26850,21 @@ define.panel('/ModuleTree/Main/Tree/Main', function (require, module, panel) {
     panel.on('init', function () {
         tree = new TextTree({
             'container': panel.$,
-            'secondaryKey': 'file',   //如果不指定，则不生成对应的 html 内容。
         });
 
         tree.on('cmd', function (cmd, item) {
+            
             panel.fire('cmd', [cmd, item,]);
+        });
+
+        tree.on('click', {
+            'key': function (item, event) { 
+                panel.fire('cmd', ['id', item.data.id]);
+            },
+            'value': function (item, event) { 
+              
+                panel.fire('cmd', ['file', item.data.file]);
+            },
         });
 
      
@@ -27473,13 +26878,31 @@ define.panel('/ModuleTree/Main/Tree/Main', function (require, module, panel) {
 
         let list = ids.map((id) => {
             let file = id$file[id];
-            return { id, file, };
+            let keys = id.split('/');
+
+            keys = keys.map((key) => {
+                return key || module.data.none;
+            });
+
+            return {
+                'keys': keys,
+                'value': file,
+
+                //自定义数据，方便后续访问。
+                'data': {
+                    id,
+                    file,
+                },
+
+            };
         });
+
+       
         
         tree.render(list);
 
         if (typeof id == 'string') {
-            tree.highlight(id);
+            // tree.highlight(id);
         }
 
 
@@ -27526,8 +26949,8 @@ define.panel('/ModuleTree/Main/Tree', function (require, module, panel) {
 
 
         Main.on({
-            'cmd': function (cmd, item) {
-                let value = item[cmd];      //cmd 为 `id`、`file`。
+            'cmd': function (cmd, value) {
+                //cmd 为 `id`、`file`。
                 panel.fire(cmd, [value]);
             },
 
