@@ -5,17 +5,17 @@
     <title>webpart-server</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-    <link rel="stylesheet" href="f/fontawesome-free-5.15.2-web/css/all.min.css?C4AF" />
+    <link rel="stylesheet" href="f/fontawesome-free-6.4.0-web/css/all.min.css?DED1" />
     <link rel="stylesheet" href="f/definejs/dist/definejs.min.css?BE02" />
     <link rel="stylesheet" href="f/highlight/styles/default.css?1201" />
-    <link rel="stylesheet" href="f/datetimepicker/datetimepicker.mod.min.css?4807" />
     <link rel="stylesheet" href="f/codemirror-5.61.1/lib/codemirror.css?0638" />
 
     <link rel="stylesheet" href="style/css/C3F73691E749E5E0B18777A1A97C4639.css" />
 
   
+    
 
-    <link rel="stylesheet" href="style/css/352CAFB954274C7A73D0D45C87B128BD.css" />
+    <link rel="stylesheet" href="style/css/9D113DF252FB19B22AC63EAB1382B6E4.css" />
 
 </head>
 
@@ -130,6 +130,101 @@
                     <div class="animation"><i class="wheel"></i></div>
                 </div>
                 
+                <div data-view="/DocAdd" class="view" style="display: none;">
+                    <div data-panel="/DocAdd/Header">
+                        <ul class="left">
+                            <li data-cmd="editor:undo" class="icon" title="撤消 Ctrl+Z"><i class="fa fa-reply"></i></li>
+                            <li data-cmd="editor:redo" class="icon" title="重做 Ctrl+Y"><i class="fa fa-share"></i></li>
+                            <li data-cmd="editor:bold" class="icon" title="粗体"><i class="fa fa-bold"></i></li>
+                            <li data-cmd="editor:italic" class="icon" title="斜体"><i class="fa fa-italic"></i></li>
+                            <li data-cmd="editor:quote" class="icon" title="段落引用"><i class="fa fa-quote-left"></i></li>
+                            <li data-cmd="editor:code" class="icon" title="代码"><i class="fa fa-code"></i></li>
+                            <li data-cmd="editor:hr" class="icon" title="横线"><i class="fa fa-minus"></i></li>
+                            <li data-cmd="editor:link" class="icon" title="超链接"><i class="fa fa-link"></i></li>
+                            <li data-cmd="editor:image" class="icon" title="图片"><i class="fa fa-image"></i></li>
+                            <li data-cmd="editor:ol" class="icon" title="有序列表"><i class="fa fa-list-ol"></i></li>
+                            <li data-cmd="editor:ul" class="icon" title="无序列表"><i class="fa fa-list-ul"></i></li>
+                            <li data-id="table" class="icon" title="插入表格"><i class="fas fa-table"></i></li>
+                            <li data-cmd="switch:crlf" class="icon" title="自动换行"><i class="fas fa-level-down-alt"></i></li>
+                            <li data-cmd="format" class="icon format" title="格式化"><i class="fab fa-foursquare"></i></li>
+                    
+                            <li class="right">
+                                <ul>
+                                    <li data-cmd="switch:fullscreen" class="icon" title="全屏"><i class="fa fa-tv"></i></li>
+                                    <li data-cmd="themes" class="icon" title="编辑器主题"><i class="fas fa-adjust"></i></li>
+                                    <li data-cmd="new" class="icon" title="新建文档"><i class="fa fa-plus"></i></li>
+                                    <li data-cmd="switch:column" class="icon" title="切换分栏显示"><i class="fa fa-columns"></i></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    
+                        <ul class="right">
+                            <li class="title">
+                                <input data-id="file" type="text" placeholder="文件路径和名称" />
+                            </li>
+                            <li class="right">
+                                <ul>
+                                    <li data-cmd="save" class="save" title="保存 Ctrl+S">
+                                        <i class="fa fa-file-alt"></i>保存
+                                    </li>
+                                    <li data-id="saved" class="saved" title="文档已保存">
+                                        <i class="fas fa-check"></i><span>已保存 [14:35:29]</span>
+                                    </li>
+                                    <li data-id="demo" class="icon demo" title="在展示页面查看效果">
+                                        <i class="fas fa-desktop"></i>效果
+                                    </li>
+                                    <li data-id="outline" class="icon" title="内容目录"><i class="fas fa-list"></i></li>
+                    
+                                </ul>
+                            </li>
+                        </ul>
+                    
+                        <div data-panel="/DocAdd/Header/Table" style="display: none;">
+                            <template name="all">
+                                <div>插入表格</div>
+                                <table>
+                                    <template name="row" placeholder="rows">
+                                        <tr>
+                                            <template name="cell" placeholder="cells">
+                                                <td data-no="{no}" data-index="{index}"></td>
+                                            </template>
+                                        </tr>
+                                    </template>
+                                </table>
+                            </template>
+                        </div>
+                    
+                        
+                    
+                    
+                    </div>
+                    <div data-panel="/DocAdd/Themes">
+                        <ul data-panel="/DocAdd/Themes/List" style="display: none;">
+                            <template name="item" placeholder="items">
+                                <li data-index="{index}">
+                                    {name}
+                                    <template name="desc" placeholder="desc">
+                                        <span>({desc})</span>
+                                    </template>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                    <div data-panel="/DocAdd/Outline" style="display: none;">
+                        <h1>内容目录<i data-cmd="close" class="fas fa-window-close" title="关闭"></i></h1>
+                        <div></div>
+                    </div>
+                    <div data-panel="/DocAdd/Editor">
+                        <textarea></textarea>
+                    </div>
+                    <div data-panel="/DocAdd/Preview" class="preview">
+                        <div class="markdoc"></div>
+                    </div>
+                </div>
+                
+                
+                
+                
                 
                 <div data-view="/Error" class="view" style="display: none;">
                     <!--
@@ -158,12 +253,23 @@
                         
                         </div>
                         <div data-panel="/FileList/Body/Main">
-                            <ul data-panel="/FileList/Body/Main/Tabs">
-                                <template>
-                                    <li data-index="{index}">{name}</li>
-                                </template>
-                            </ul>
+                            <div data-panel="/FileList/Body/Main/Tabs">
+                            </div>
                         
+                            <div data-panel="/FileList/Body/Main/Stat">
+                                
+                                <div data-panel="/FileList/Body/Main/Stat/GridView">
+                                    <template name="cell">
+                                        <div class="bar" style="width: {percent}%;"></div>
+                                        <div class="info">
+                                            {value} <span class="desc">{desc}</span>
+                                        </div>
+                                        
+                                    </template>
+                                
+                                </div>
+                            
+                            </div>
                             <div data-panel="/FileList/Body/Main/Tree" style="display: none;">
                                 
                                 <ul data-panel="/FileList/Body/Main/Tree/Header">
@@ -175,6 +281,7 @@
                                     <li data-id="chk-tab"></li>
                                     <li data-id="chk-color"></li>
                                     <li data-id="chk-hover"></li>
+                                    <li data-id="chk-dirOnly"></li>
                             
                                     <li>
                                         <button data-cmd="copy">复制内容</button>
@@ -198,14 +305,13 @@
                                 <div data-panel="/FileList/Body/Main/List/File" style="display: none;">
                                     
                                     <ul data-panel="/FileList/Body/Main/List/File/Filter">
-                                        <li data-panel="/FileList/Body/Main/List/File/Filter/CWD"></li>
+                                        <li data-panel="/FileList/Body/Main/List/File/Filter/OnlyCurrent"></li>
                                         <li data-panel="/FileList/Body/Main/List/File/Filter/Name">
                                             <span>名称</span>
                                             <input name="name" class="name" />
                                         </li>
                                         <li data-panel="/FileList/Body/Main/List/File/Filter/ChildDirs"></li>
                                         <li data-panel="/FileList/Body/Main/List/File/Filter/Type"></li>
-                                        <li data-panel="/FileList/Body/Main/List/File/Filter/Encoding"></li>
                                         <li data-panel="/FileList/Body/Main/List/File/Filter/MD5"></li>
                                     
                                     </ul>
@@ -284,9 +390,8 @@
                     </div>
                     
                     <aside data-panel="/FileList/Sidebar">
-                        <ul data-panel="/FileList/Sidebar/Tabs" class="tabs">
-                            <!--<li data-index="{index}">{name}</li>-->
-                        </ul>
+                        <div data-panel="/FileList/Sidebar/Tabs">
+                        </div>
                     
                         
                         <div data-panel="/FileList/Sidebar/Stat" style="display: none;">
@@ -294,7 +399,7 @@
                                 <table>
                                     <tr class="sname">
                                         <th>名称</th>
-                                        <td>{sname}</td>
+                                        <td>{name}</td>
                                     </tr>
                                    
                                     <tr class="type">
@@ -307,7 +412,7 @@
                                     </tr>
                                     <tr class="size">
                                         <th>大小</th>
-                                        <td><span class="value">{size}</span> <span class="desc">{sizeDesc}</span></td>
+                                        <td><span class="value">{sizeValue}</span> <span class="desc">{sizeDesc}</span></td>
                                     </tr>
                                     <tr class="time">
                                         <th>创建时间</th>
@@ -323,6 +428,7 @@
                                         <tr class="{class}">
                                             <th>{name}</th>
                                             <td><span class="value">{value}</span> <span class="desc">{desc}</span></td>
+                                            <td><span class="value">{value1}</span> <span class="desc">{desc1}</span></td>
                                         </tr>
                                     </template>
                                 </table>
@@ -354,83 +460,6 @@
                 
                 <div data-view="/Home" class="view" style="display: none;">
                     
-                    
-                    <div data-panel="/Home/Project" class="box">
-                        <header>
-                            <span>项目</span>
-                            <i data-cmd="refresh" class="fas fa-sync" title="刷新当前模块"></i>
-                        </header>
-                        <div data-panel="/Home/Project/Loading" class="loading">
-                            <p>
-                                <i class="fas fa-sync-alt"></i>
-                                <span>加载中...</span>
-                            </p>
-                        </div>
-                        <div data-panel="/Home/Project/Main" style="display: none;">
-                            <template name="table">
-                                <table>
-                                    <tbody>
-                                        <tr class="status">
-                                            <th>监控状态</th>
-                                            <td>
-                                                <i class="{status} far fa-{status}-circle"></i>{statusText}
-                                            </td>
-                                        </tr>
-                                        <tr class="name">
-                                            <th>项目名称</th>
-                                            <td>{name}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>版本号</th>
-                                            <td>{version}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>项目描述</th>
-                                            <td>{description}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>项目仓库</th>
-                                            <td>
-                                                <a href="{repositoryHref}" target="_blank">{repositoryUrl}</a>
-                                            </td>
-                                        </tr>
-                                        <tr class="italic">
-                                            <th>关键词</th>
-                                            <td>{keywords}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>作者姓名</th>
-                                            <td>{author}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>作者邮箱</th>
-                                            <td>{email}</td>
-                                        </tr>
-                                        <tr class="cwd">
-                                            <th>工作目录</th>
-                                            <td>{cwd}</td>
-                                        </tr>
-                                        
-                                        
-                                        <tr class="">
-                                            <th>启动时间</th>
-                                            <td>{time}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>进程 ID</th>
-                                            <td>{pid}</td>
-                                        </tr>
-                                        <tr class="italic">
-                                            <th>参数列表</th>
-                                            <td>{argv}</td>
-                                        </tr>
-                                        
-                                    </tbody>
-                                </table>
-                            </template>
-                            
-                        </div>
-                    </div>
                     <div data-panel="/Home/Server" class="box blue">
                         <header>
                             <span>服务器</span>
@@ -510,9 +539,85 @@
                             
                         </div>
                     </div>
+                    <div data-panel="/Home/Project" class="box">
+                        <header>
+                            <span>项目</span>
+                            <i data-cmd="refresh" class="fas fa-sync" title="刷新当前模块"></i>
+                        </header>
+                        <div data-panel="/Home/Project/Loading" class="loading">
+                            <p>
+                                <i class="fas fa-sync-alt"></i>
+                                <span>加载中...</span>
+                            </p>
+                        </div>
+                        <div data-panel="/Home/Project/Main" style="display: none;">
+                            <template name="table">
+                                <table>
+                                    <tbody>
+                                        <tr class="status">
+                                            <th>监控状态</th>
+                                            <td>
+                                                <i class="{status} far fa-{status}-circle"></i>{statusText}
+                                            </td>
+                                        </tr>
+                                        <tr class="name">
+                                            <th>项目名称</th>
+                                            <td>{name}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>版本号</th>
+                                            <td>{version}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>项目描述</th>
+                                            <td>{description}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>项目仓库</th>
+                                            <td>
+                                                <a href="{repositoryHref}" target="_blank">{repositoryUrl}</a>
+                                            </td>
+                                        </tr>
+                                        <tr class="italic">
+                                            <th>关键词</th>
+                                            <td>{keywords}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>作者姓名</th>
+                                            <td>{author}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>作者邮箱</th>
+                                            <td>{email}</td>
+                                        </tr>
+                                        <tr class="cwd">
+                                            <th>工作目录</th>
+                                            <td>{cwd}</td>
+                                        </tr>
+                                        
+                                        
+                                        <tr class="">
+                                            <th>启动时间</th>
+                                            <td>{time}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>进程 ID</th>
+                                            <td>{pid}</td>
+                                        </tr>
+                                        <tr class="italic">
+                                            <th>参数列表</th>
+                                            <td>{argv}</td>
+                                        </tr>
+                                        
+                                    </tbody>
+                                </table>
+                            </template>
+                            
+                        </div>
+                    </div>
                     <div data-panel="/Home/JsModule" class="box orange">
                         <header>
-                            <span>JS 模块</span>
+                            <span>模块系统</span>
                             <i data-cmd="refresh" class="fas fa-sync" title="刷新当前模块"></i>
                         </header>
                         <div data-panel="/Home/JsModule/Loading" class="loading">
@@ -574,8 +679,6 @@
                                     <li><span class="key">目录</span><span class="value">{dir}</span></li>
                                     <li><span class="key">文件</span><span class="value">{file}</span></li>
                                     <li><span class="key">图片</span><span class="value">{image}</span></li>
-                                    <li><span class="key">UTF8 编码</span><span class="value">{isUTF8}</span></li>
-                                    <li><span class="key">其它编码</span><span class="value">{notUTF8}</span></li>
                                 </ul>
                                 <ul>
                                     <template name="type" placeholder="types">
@@ -612,15 +715,8 @@
                         </div>
                         
                         <section data-panel="/HtmlTree/Main/JsLink" style="display: none;">
-                            <ul data-panel="/HtmlTree/Main/JsLink/Tabs">
-                                <template>
-                                    <li data-index="{index}">{name}</li>
-                                </template>
-                            </ul>
-                                
-                            
-                            
-                            
+                            <div data-panel="/HtmlTree/Main/JsLink/Tabs">
+                            </div>
                             
                             <div data-panel="/HtmlTree/Main/JsLink/Content" class="tab-content" style="display: none;">
                                 <div data-panel="/HtmlTree/Main/JsLink/Content/Header">
@@ -648,7 +744,7 @@
                                         </tr>
                                         <tr class="">
                                             <th>所在目录</th>
-                                            <td><a href="javascript:" data-cmd="dir">{dir}</a></td>
+                                            <td><a href="javascript:" data-cmd="file">{dir}</a></td>
                                         </tr>
                                         <tr class="type">
                                             <th>文件类型</th>
@@ -660,7 +756,7 @@
                                         </tr>
                                         <tr class="size">
                                             <th>文件大小</th>
-                                            <td><span class="value">{size}</span> <span class="desc">{sizeDesc}</span></td>
+                                            <td><span class="value">{sizeValue}</span> <span class="desc">{sizeDesc}</span></td>
                                         </tr>
                                         <tr class="">
                                             <th>内容行数</th>
@@ -673,10 +769,6 @@
                                         <tr class="time">
                                             <th>修改时间</th>
                                             <td>{mtime}</td>
-                                        </tr>
-                                        <tr class="utf8-{utf8Class}">
-                                            <th>UTF8 编码</th>
-                                            <td>{isUTF8}</td>
                                         </tr>
                                     </table>
                                 </template>
@@ -708,7 +800,7 @@
                                             <tr class="dir">
                                                 <th>所在目录</th>
                                                 <td>
-                                                    <a data-cmd="dir">{dir}</a>
+                                                    <a data-cmd="file">{dir}</a>
                                                 </td>
                                             </tr>
                                             <tr class="tabs">
@@ -743,7 +835,7 @@
                                             <tr class="dir">
                                                 <th>所在目录</th>
                                                 <td>
-                                                    <a data-cmd="dir">{dir}</a>
+                                                    <a data-cmd="file">{dir}</a>
                                                 </td>
                                             </tr>
                                             <tr class="parent">
@@ -793,11 +885,9 @@
                         
                         
                         <section data-panel="/HtmlTree/Main/HtmlLink" style="display: none;">
-                            <ul data-panel="/HtmlTree/Main/HtmlLink/Tabs">
-                                <template>
-                                    <li data-index="{index}">{name}</li>
-                                </template>
-                            </ul>
+                            <div data-panel="/HtmlTree/Main/HtmlLink/Tabs">
+                               
+                            </div>
                                 
                             
                             
@@ -829,7 +919,7 @@
                                         </tr>
                                         <tr class="">
                                             <th>所在目录</th>
-                                            <td><a href="javascript:" data-cmd="dir">{dir}</a></td>
+                                            <td><a href="javascript:" data-cmd="file">{dir}</a></td>
                                         </tr>
                                         <tr class="type">
                                             <th>文件类型</th>
@@ -841,7 +931,7 @@
                                         </tr>
                                         <tr class="size">
                                             <th>文件大小</th>
-                                            <td><span class="value">{size}</span> <span class="desc">{sizeDesc}</span></td>
+                                            <td><span class="value">{sizeValue}</span> <span class="desc">{sizeDesc}</span></td>
                                         </tr>
                                         <tr class="">
                                             <th>内容行数</th>
@@ -854,10 +944,6 @@
                                         <tr class="time">
                                             <th>修改时间</th>
                                             <td>{mtime}</td>
-                                        </tr>
-                                        <tr class="">
-                                            <th>UTF8 编码</th>
-                                            <td>{isUTF8}</td>
                                         </tr>
                                     </table>
                                 </template>
@@ -889,7 +975,7 @@
                                             <tr class="dir">
                                                 <th>所在目录</th>
                                                 <td>
-                                                    <a data-cmd="dir">{dir}</a>
+                                                    <a data-cmd="file">{dir}</a>
                                                 </td>
                                             </tr>
                                             <tr class="tabs">
@@ -924,7 +1010,7 @@
                                             <tr class="dir">
                                                 <th>所在目录</th>
                                                 <td>
-                                                    <a data-cmd="dir">{dir}</a>
+                                                    <a data-cmd="file">{dir}</a>
                                                 </td>
                                             </tr>
                                             <tr class="parent">
@@ -955,101 +1041,6 @@
                                     </div>
                                 </div>
                                
-                            
-                            </div>
-                            <div data-panel="/HtmlTree/Main/HtmlLink/BaseInfo----Copy" class="tab-content" style="display: none;">
-                                <div data-panel="/HtmlTree/Main/HtmlLink/BaseInfo/Base">
-                                    <template name="static">
-                                        <table>
-                                            <tr class="type">
-                                                <th>类型</th>
-                                                <td>静态 HtmlLink</td>
-                                            </tr>
-                                            <tr class="rel">
-                                                <th>引用原文</th>
-                                                <td>
-                                                    <a data-cmd="rel">{rel}</a>
-                                                </td>
-                                            </tr>
-                                            <tr class="href">
-                                                <th>引用路径</th>
-                                                <td>{href}</td>
-                                            </tr>
-                                            <tr class="file">
-                                                <th>所在文件</th>
-                                                <td>
-                                                    <a data-cmd="file">{file}</a>
-                                                </td>
-                                            </tr>
-                                            <tr class="dir">
-                                                <th>所在目录</th>
-                                                <td>
-                                                    <a data-cmd="dir">{dir}</a>
-                                                </td>
-                                            </tr>
-                                            <tr class="tabs">
-                                                <th>缩进</th>
-                                                <td>{tabs}</td>
-                                            </tr>
-                                            <tr class="no">
-                                                <th>行号</th>
-                                                <td>{no}</td>
-                                            </tr>
-                                            <tr class="parent">
-                                                <th>父节点</th>
-                                                <td>
-                                                    <a data-cmd="parent">{parent}</a>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </template>
-                            
-                                    <template name="block">
-                                        <table>
-                                            <tr class="type">
-                                                <th>类型</th>
-                                                <td>动态 HtmlLink</td>
-                                            </tr>
-                                            <tr class="file">
-                                                <th>所在文件</th>
-                                                <td>
-                                                    <a data-cmd="file">{file}</a>
-                                                </td>
-                                            </tr>
-                                            <tr class="dir">
-                                                <th>所在目录</th>
-                                                <td>
-                                                    <a data-cmd="dir">{dir}</a>
-                                                </td>
-                                            </tr>
-                                            <tr class="parent">
-                                                <th>父节点</th>
-                                                <td>
-                                                    <a data-cmd="parent">{parent}</a>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </template>
-                                </div>
-                            
-                                <div data-panel="/HtmlTree/Main/HtmlLink/BaseInfo/Childs">
-                                    <h1><i class="fa fa-folder"></i>直接子节点</h1>
-                                    <div data-panel="/HtmlTree/Main/HtmlLink/BaseInfo/Childs/GridView" class="gridview">
-                                        <template name="href">
-                                            <a data-cmd="{cmd}">{text}</a>
-                                        </template>
-                                    </div>
-                                </div>
-                            
-                                <div data-panel="/HtmlTree/Main/HtmlLink/BaseInfo/Children">
-                                    <h1><i class="fa fa-folder"></i>全部子节点</h1>
-                                    <div data-panel="/HtmlTree/Main/HtmlLink/BaseInfo/Children/GridView" class="gridview">
-                                        <template name="href">
-                                            <a data-cmd="{cmd}">{text}</a>
-                                        </template>
-                                    </div>
-                                </div>
-                            
                             
                             </div>
                             <div data-panel="/HtmlTree/Main/HtmlLink/Rel" class="tab-content" style="display: none;">
@@ -1076,11 +1067,9 @@
                         
                         
                         <section data-panel="/HtmlTree/Main/HtmlBlock" style="display: none;">
-                            <ul data-panel="/HtmlTree/Main/HtmlBlock/Tabs">
-                                <template>
-                                    <li data-index="{index}">{name}</li>
-                                </template>
-                            </ul>
+                            <div data-panel="/HtmlTree/Main/HtmlBlock/Tabs">
+                               
+                            </div>
                                 
                             
                             
@@ -1210,6 +1199,7 @@
                         <li data-id="chk-color"></li>
                         <li data-id="chk-highlight"></li>
                         <li data-id="chk-border"></li>
+                        <li data-id="chk-order"></li>
                     
                     </ul>
                 
@@ -1221,126 +1211,34 @@
                             
                         </li>
                     </ul>
-                
-                    
                     <ul data-panel="/Log/List">
                         <template name="group" placeholder="groups">
-                            <li class="group hide">
-                                <h2 data-date="{date}" data-no="{no}">
-                                    <span class="date">{date}</span> <span class="total">({total})</span>
+                            <li data-group="{date}" class="group hide">
+                                <h2 data-id="header" data-no="{no}">
+                                    <span class="date {hasError}">{date}</span> <span data-id="total" class="total">({total})</span>
                                 </h2>
-                                <ul data-group="{date}" style="display: none;">
+                                
+                                <ul style="display: none;">
                                     <template name="item" placeholder="items">
-                                        <li data-no="{no}" data-index="{index}" {datetime} class="item {type} {sameTime}">
+                                        <li data-no="{no}" data-index="{index}" class="item {type} {sameTime}">
                                             <template name="time" placeholder="time">
-                                                <span data-cmd="datetime" class="time">{time}</span>
+                                                <span data-cmd="time" class="time">{time}</span>
                                             </template>
+                                            <span class="order">[{order}]</span>
                                             {icon}<span class="msg">{msg}</span>
                                         </li>
                                     </template>
                                 </ul>
+                    
                             </li>
                         </template>
                     </ul>
                 
-                    
                 
+                
+                    
+                    
                 </div>
-                <div data-view="/DocAdd" class="view" style="display: none;">
-                    <div data-panel="/DocAdd/Header">
-                        <ul class="left">
-                            <li data-cmd="editor:undo" class="icon" title="撤消 Ctrl+Z"><i class="fa fa-reply"></i></li>
-                            <li data-cmd="editor:redo" class="icon" title="重做 Ctrl+Y"><i class="fa fa-share"></i></li>
-                            <li data-cmd="editor:bold" class="icon" title="粗体"><i class="fa fa-bold"></i></li>
-                            <li data-cmd="editor:italic" class="icon" title="斜体"><i class="fa fa-italic"></i></li>
-                            <li data-cmd="editor:quote" class="icon" title="段落引用"><i class="fa fa-quote-left"></i></li>
-                            <li data-cmd="editor:code" class="icon" title="代码"><i class="fa fa-code"></i></li>
-                            <li data-cmd="editor:hr" class="icon" title="横线"><i class="fa fa-minus"></i></li>
-                            <li data-cmd="editor:link" class="icon" title="超链接"><i class="fa fa-link"></i></li>
-                            <li data-cmd="editor:image" class="icon" title="图片"><i class="fa fa-image"></i></li>
-                            <li data-cmd="editor:ol" class="icon" title="有序列表"><i class="fa fa-list-ol"></i></li>
-                            <li data-cmd="editor:ul" class="icon" title="无序列表"><i class="fa fa-list-ul"></i></li>
-                            <li data-id="table" class="icon" title="插入表格"><i class="fas fa-table"></i></li>
-                            <li data-cmd="switch:crlf" class="icon" title="自动换行"><i class="fas fa-level-down-alt"></i></li>
-                            <li data-cmd="format" class="icon format" title="格式化"><i class="fab fa-foursquare"></i></li>
-                    
-                            <li class="right">
-                                <ul>
-                                    <li data-cmd="switch:fullscreen" class="icon" title="全屏"><i class="fa fa-tv"></i></li>
-                                    <li data-cmd="themes" class="icon" title="编辑器主题"><i class="fas fa-adjust"></i></li>
-                                    <li data-cmd="new" class="icon" title="新建文档"><i class="fa fa-plus"></i></li>
-                                    <li data-cmd="switch:column" class="icon" title="切换分栏显示"><i class="fa fa-columns"></i></li>
-                                </ul>
-                            </li>
-                        </ul>
-                    
-                        <ul class="right">
-                            <li class="title">
-                                <input data-id="name" type="text" placeholder="文件路径和名称" />
-                            </li>
-                            <li class="right">
-                                <ul>
-                                    <li data-cmd="save" class="save" title="保存 Ctrl+S">
-                                        <i class="fa fa-file-alt"></i>保存
-                                    </li>
-                                    <li data-id="saved" class="saved" title="文档已保存">
-                                        <i class="fas fa-check"></i><span>已保存 [14:35:29]</span>
-                                    </li>
-                                    <li data-id="demo" class="icon demo" title="在展示页面查看效果">
-                                        <i class="fas fa-desktop"></i>效果
-                                    </li>
-                                    <li data-id="outline" class="icon" title="内容目录"><i class="fas fa-list"></i></li>
-                    
-                                </ul>
-                            </li>
-                        </ul>
-                    
-                        <div data-panel="/DocAdd/Header/Table" style="display: none;">
-                            <template name="all">
-                                <div>插入表格</div>
-                                <table>
-                                    <template name="row" placeholder="rows">
-                                        <tr>
-                                            <template name="cell" placeholder="cells">
-                                                <td data-no="{no}" data-index="{index}"></td>
-                                            </template>
-                                        </tr>
-                                    </template>
-                                </table>
-                            </template>
-                        </div>
-                    
-                        
-                    
-                    
-                    </div>
-                    <div data-panel="/DocAdd/Themes">
-                        <ul data-panel="/DocAdd/Themes/List" style="display: none;">
-                            <template name="item" placeholder="items">
-                                <li data-index="{index}">
-                                    {name}
-                                    <template name="desc" placeholder="desc">
-                                        <span>({desc})</span>
-                                    </template>
-                                </li>
-                            </template>
-                        </ul>
-                    </div>
-                    <div data-panel="/DocAdd/Outline" style="display: none;">
-                        <h1>内容目录<i data-cmd="close" class="fas fa-window-close" title="关闭"></i></h1>
-                        <div></div>
-                    </div>
-                    <div data-panel="/DocAdd/Editor">
-                        <textarea></textarea>
-                    </div>
-                    <div data-panel="/DocAdd/Preview" class="preview">
-                        <div class="markdoc"></div>
-                    </div>
-                </div>
-                
-                
-                
-                
                 <div data-view="/ModuleTree" class="view" style="display: none;">
                     
                     
@@ -1355,14 +1253,28 @@
                         
                         </div>
                     
-                        <ul data-panel="/ModuleTree/Main/Tabs">
-                            <template>
-                                <li data-index="{index}">{name}</li>
-                            </template>
-                        </ul>
+                        <div data-panel="/ModuleTree/Main/Tabs">
+                            
+                        </div>
                     
                         
                     
+                        <div data-panel="/ModuleTree/Main/Stat">
+                            
+                            <div data-panel="/ModuleTree/Main/Stat/GridView">
+                                <template name="cell">
+                                    <div class="bar" title="{percent}%">
+                                        <div class="main" style="width: {percent}%;"></div>
+                                    </div>
+                                    <span class="info">
+                                        {value} <span class="desc">{desc}</span>
+                                    </span>
+                                    
+                                </template>
+                            
+                            </div>
+                        
+                        </div>
                         
                         <ul data-panel="/ModuleTree/Main/FileInfo" style="display: none;">
                             <template>
@@ -1379,7 +1291,7 @@
                                         </tr>
                                         <tr class="">
                                             <th>所在目录</th>
-                                            <td><a data-cmd="dir">{dir}</a></td>
+                                            <td><a data-cmd="file">{dir}</a></td>
                                         </tr>
                                         <tr class="type">
                                             <th>文件类型</th>
@@ -1397,6 +1309,18 @@
                                             <th>内容行数</th>
                                             <td>{lines}</td>
                                         </tr>
+                                        <tr class="">
+                                            <th>内容字符数</th>
+                                            <td>{length}</td>
+                                        </tr>
+                                        <tr class="">
+                                            <th>内容字节数</th>
+                                            <td>{byteLength}</td>
+                                        </tr>
+                                        <tr class="">
+                                            <th>模块数</th>
+                                            <td>{modules}</td>
+                                        </tr>
                                         <tr class="time">
                                             <th>创建时间</th>
                                             <td>{birthtime}</td>
@@ -1404,10 +1328,6 @@
                                         <tr class="time">
                                             <th>修改时间</th>
                                             <td>{mtime}</td>
-                                        </tr>
-                                        <tr class="">
-                                            <th>UTF8 编码</th>
-                                            <td>{isUTF8}</td>
                                         </tr>
                                     </table>
                                 </li>
@@ -1437,8 +1357,8 @@
                                             <td>{method}</td>
                                         </tr>
                                         <tr class="type">
-                                            <th>导出工厂</th>
-                                            <td>{factory-type}</td>
+                                            <th>工厂类型</th>
+                                            <td>{factory}</td>
                                         </tr>
                                         <tr>
                                             <th>级别</th>
@@ -1452,60 +1372,22 @@
                                 </template>
                             </div>
                         
-                            <div data-panel="/ModuleTree/Main/ModuleInfo/Dependents">
-                                <h1><i class="fa fa-folder"></i>被依赖的模块</h1>
-                                <div data-panel="/ModuleTree/Main/ModuleInfo/Dependents/GridView">
-                                    <template name="href">
-                                        <a data-cmd="{cmd}">{text}</a>
-                                    </template>
-                                </div>
-                            </div>
                         
-                            <div data-panel="/ModuleTree/Main/ModuleInfo/Publics">
-                                <h1><i class="fa fa-folder"></i>所依赖的公共模块</h1>
-                                <div data-panel="/ModuleTree/Main/ModuleInfo/Publics/GridView">
-                                    <template name="href">
-                                        <a data-cmd="{cmd}">{text}</a>
-                                    </template>
-                                </div>
-                            </div>
+                            <ul data-panel="/ModuleTree/Main/ModuleInfo/Groups">
+                                <template name="group" placeholder="groups">
+                                    <li data-index="{index}">
+                                        <h1><i class="fa fa-folder"></i>{name}</h1>
+                                        <div data-id="gridview-{index}">
+                                            <template name="href">
+                                                <a data-cmd="{cmd}">{text}</a>
+                                            </template>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ul>
+                          
                         
-                            <div data-panel="/ModuleTree/Main/ModuleInfo/Privates">
-                                <h1><i class="fa fa-folder"></i>所依赖的私有模块</h1>
-                                <div data-panel="/ModuleTree/Main/ModuleInfo/Privates/GridView">
-                                    <template name="href">
-                                        <a data-cmd="{cmd}">{text}</a>
-                                    </template>
-                                </div>
-                            </div>
-                           
-                        
-                            <div data-panel="/ModuleTree/Main/ModuleInfo/Childs" style="display: none;">
-                                <h1><i class="fa fa-folder"></i>直接子模块</h1>
-                                <div data-panel="/ModuleTree/Main/ModuleInfo/Childs/GridView">
-                                    <template name="href">
-                                        <a data-cmd="{cmd}">{text}</a>
-                                    </template>
-                                </div>
-                            </div>
-                        
-                            <div data-panel="/ModuleTree/Main/ModuleInfo/Children" style="display: none;">
-                                <h1><i class="fa fa-folder"></i>全部子模块</h1>
-                                <div data-panel="/ModuleTree/Main/ModuleInfo/Children/GridView">
-                                    <template name="href">
-                                        <a data-cmd="{cmd}">{text}</a>
-                                    </template>
-                                </div>
-                            </div>
-                        
-                            <div data-panel="/ModuleTree/Main/ModuleInfo/Siblings">
-                                <h1><i class="fa fa-folder"></i>兄弟模块</h1>
-                                <div data-panel="/ModuleTree/Main/ModuleInfo/Siblings/GridView">
-                                    <template name="href">
-                                        <a data-cmd="{cmd}">{text}</a>
-                                    </template>
-                                </div>
-                            </div>
+                            
                         
                         </div>
                         <div data-panel="/ModuleTree/Main/Tree" class="tab-content" style="display: none;">
@@ -1535,18 +1417,26 @@
                         <div data-panel="/ModuleTree/Main/List" class="tab-content" style="display: none;">
                          
                             <ul data-panel="/ModuleTree/Main/List/Header">
-                                <li>
-                                    <h1><i class="fa fa-folder"></i>全部模块</h1>
-                                </li>
+                                <template>
+                                    <li>
+                                        <h1><i class="fa fa-folder"></i>模块列表({count})</h1>
+                                    </li>
+                                </template>
+                            
                                 
                             </ul>
                             <ul data-panel="/ModuleTree/Main/List/Filter">
+                                <li data-panel="/ModuleTree/Main/List/Filter/Keyword">
+                                    <span>搜索</span>
+                                    <input name="keyword" class="keyword" />
+                                </li>
                                 <li data-panel="/ModuleTree/Main/List/Filter/Fields"></li>
                                 <li data-panel="/ModuleTree/Main/List/Filter/Childs"></li>
                                 <li data-panel="/ModuleTree/Main/List/Filter/Methods"></li>
                                 <li data-panel="/ModuleTree/Main/List/Filter/Levels"></li>
                                 <li data-panel="/ModuleTree/Main/List/Filter/Dependents"></li>
                                 <li data-panel="/ModuleTree/Main/List/Filter/ChildDependents"></li>
+                                <li data-panel="/ModuleTree/Main/List/Filter/HtmlFile"></li>
                             </ul>
                             <div data-panel="/ModuleTree/Main/List/GridView">
                             
@@ -1558,19 +1448,46 @@
                         
                         </div>
                         <div data-panel="/ModuleTree/Main/Dependent" class="tab-content" style="display: none;">
-                         
+                            
                             <ul data-panel="/ModuleTree/Main/Dependent/Header">
-                                <li>
-                                    <h1><i class="fa fa-folder"></i>所依赖的公共模块</h1>
-                                </li>
-                                
+                                <template>
+                                    <li>
+                                        <h1><i class="fa fa-folder"></i>所依赖的公共模块({total})</h1>
+                                    </li>
+                                </template>
+                            </ul>
+                            
+                            <ul data-panel="/ModuleTree/Main/Dependent/Tabs">
+                                <template>
+                                    <li data-index="{index}">{name}</li>
+                                </template>
                             </ul>
                             <ul data-panel="/ModuleTree/Main/Dependent/List">
                                 <template name="none">
                                     <li class="none">该模块没有依赖于任何公共模块。</li>
                                 </template>
                                 <template name="item">
-                                    <li data-no="{no}" class="group found-{found} total-{total}">
+                                    <li data-no="{no}" class="group total-{total}">
+                                        <header>
+                                            <h3 class="id">{id}</h3>
+                                            <span class="total">({total})</span>
+                                            <template name="tip" placeholder="tip">
+                                                <span class="tip">{tip}</span>
+                                            </template>
+                                        </header>
+                                        <main data-id="main" style="display: none;">
+                                            <p>依赖于 <a data-cmd="id">{id}</a> 的模块列表：</p>
+                                            <div data-id="gridview"></div>
+                                        </main>
+                                    </li>
+                                </template>
+                            </ul>
+                            <ul data-panel="/ModuleTree/Main/Dependent/Outers">
+                                <template name="none">
+                                    <li class="none">该模块没有依赖于任何公共模块。</li>
+                                </template>
+                                <template name="item">
+                                    <li data-no="{no}" class="group total-{total}">
                                         <header>
                                             <h3 class="id">{id}</h3>
                                             <span class="total">({total})</span>
@@ -1611,27 +1528,6 @@
                         
                         
                         
-                        <div data-panel="/ModuleTree/Main/Pair" class="tab-content" style="display: none;">
-                         
-                            <ul data-panel="/ModuleTree/Main/Pair/Header">
-                                <li>
-                                    <h1><i class="fa fa-folder"></i>全部模块</h1>
-                                </li>
-                                
-                            </ul>
-                            <ul data-panel="/ModuleTree/Main/Pair/Filter">
-                                <li data-panel="/ModuleTree/Main/Pair/Filter/JsFile"></li>
-                                <li data-panel="/ModuleTree/Main/Pair/Filter/HtmlFile"></li>
-                            </ul>
-                            <div data-panel="/ModuleTree/Main/Pair/GridView">
-                            
-                                <template name="href">
-                                    {icon}<a data-cmd="{cmd}" data-value="{value}">{text}</a>
-                                </template>
-                            
-                            </div>
-                        
-                        </div>
                     
                     </div>
                     
@@ -1743,192 +1639,184 @@
                 
                 
                 <div data-view="/Tool" class="view" style="display: none;">
-                    
-                    <div data-panel="/Tool/Tree">
-                        
+                    <div data-panel="/Tool/Tabs">
                     </div>
-                    <main data-panel="/Tool/Main" style="display: none;">
+                
                     
-                        
-                        <div data-panel="/Tool/Main/QRCode" style="display: none;">
-                          
-                           <main data-panel="/Tool/Main/QRCode/Main">
-                              <div data-panel="/Tool/Main/QRCode/Main/Input">
-                                 <textarea placeholder="请输入内容"></textarea>
-                                 <button>生成二维码</button>
-                              </div>
-                        
-                              <ul data-panel="/Tool/Main/QRCode/Main/Output">
-                                 <template>
-                                    <li>
-                                       <a href="{href}" target="_blank">
-                                          <img src="{src}">
-                                       </a>
-                                    </li>
-                                    <li class="label">
-                                       <a href="{url}">{url}</a>
-                                    </li>
-                                 </template>
-                              </ul>
-                           </main>
-                        
-                           <aside data-panel="/Tool/Main/QRCode/Statics">
-                              <ul data-panel="/Tool/Main/QRCode/Statics/List">
-                                 <template>
-                                    <li data-index="{index}">
-                                       <a href="{href}" target="_blank">
-                                          <img src="{src}" />
-                                       </a>
-                                       <a href="{url}" target="_blank">{url}</a>
-                                    </li>
-                                 </template>
-                              </ul>
-                           </aside>
-                          
-                        </div>
-                        
-                        
-                        <div data-panel="/Tool/Main/MD5" style="display: none;">
+                    <div data-panel="/Tool/JS" style="display: none;">
+                       
+                    
+                       <div data-panel="/Tool/JS/Header">
+                           <ul class="left">
+                               <li data-cmd="editor:undo" class="icon" title="撤消 Ctrl+Z"><i class="fa fa-reply"></i></li>
+                               <li data-cmd="editor:redo" class="icon" title="重做 Ctrl+Y"><i class="fa fa-share"></i></li>
+                               <li data-cmd="switch:crlf" class="icon" title="自动换行"><i class="fas fa-level-down-alt"></i></li>
+                               <li data-cmd="switch:fullscreen" class="icon" title="全屏"><i class="fa fa-tv"></i></li>
+                               <li data-cmd="themes" class="icon" title="编辑器主题"><i class="fas fa-adjust"></i></li>
+                       
+                               <li class="right">
+                                   <ul>
+                                       <li><button data-cmd="copy">复制内容</button></li>
+                                       <li data-id="md5" class="md5"></li>
+                                   </ul>
+                               </li>
+                       
                            
-                        
-                           <div data-panel="/Tool/Main/MD5/Input">
-                              <textarea placeholder="请输入内容"></textarea>
-                              <button>生成 MD5</button>
-                           </div>
-                        
-                           <div data-panel="/Tool/Main/MD5/Output">
-                              <template>
-                                 {md5}
-                              </template>
-                           </div>
-                        
-                         
+                       
+                           </ul>
+                       
+                       
+                       
+                           
+                           
                           
-                        </div>
-                        
-                        
-                        <div data-panel="/Tool/Main/Less" style="display: none;">
                            
-                        
-                           <div data-panel="/Tool/Main/Less/Header">
-                               <ul class="left">
-                                   <li data-cmd="editor:undo" class="icon" title="撤消 Ctrl+Z"><i class="fa fa-reply"></i></li>
-                                   <li data-cmd="editor:redo" class="icon" title="重做 Ctrl+Y"><i class="fa fa-share"></i></li>
-                                   <li data-cmd="switch:crlf" class="icon" title="自动换行"><i class="fas fa-level-down-alt"></i></li>
-                                   <li data-cmd="switch:fullscreen" class="icon" title="全屏"><i class="fa fa-tv"></i></li>
-                                   <li data-cmd="themes" class="icon" title="编辑器主题"><i class="fas fa-adjust"></i></li>
-                           
-                                   <li class="right">
-                                       <ul>
-                                           <li data-id="chk-minify"></li>
-                                           <li><button data-cmd="copy">复制内容</button></li>
-                                           <li data-id="md5" class="md5"></li>
-                                       </ul>
+                       
+                       
+                       </div>
+                       <div data-panel="/Tool/JS/Themes">
+                           <ul data-panel="/Tool/JS/Themes/List" style="display: none;">
+                               <template name="item" placeholder="items">
+                                   <li data-index="{index}">
+                                       {name}
+                                       <template name="desc" placeholder="desc">
+                                           <span>({desc})</span>
+                                       </template>
                                    </li>
+                               </template>
+                           </ul>
+                       </div>
+                       <div data-panel="/Tool/JS/Editor">
+                           <textarea></textarea>
+                       </div>
+                       <div data-panel="/Tool/JS/Preview">
                            
-                               
-                           
-                               </ul>
-                           
-                           
-                           
-                               
-                               
-                              
-                               
-                           
-                           
+                           <div class="compile">
+                               <button data-cmd="compile">开始压缩</button>
                            </div>
-                           <div data-panel="/Tool/Main/Less/Themes">
-                               <ul data-panel="/Tool/Main/Less/Themes/List" style="display: none;">
-                                   <template name="item" placeholder="items">
-                                       <li data-index="{index}">
-                                           {name}
-                                           <template name="desc" placeholder="desc">
-                                               <span>({desc})</span>
-                                           </template>
-                                       </li>
-                                   </template>
-                               </ul>
-                           </div>
-                           <div data-panel="/Tool/Main/Less/Editor">
-                               <textarea></textarea>
-                           </div>
-                           <div data-panel="/Tool/Main/Less/Preview">
-                               
-                               <div class="compile">
-                                   <button data-cmd="compile">开始编译</button>
-                               </div>
+                       
+                           <div data-id="markdoc" class="markdoc"></div>
+                       </div>
+                    
+                      
+                    </div>
+                    
+                    
+                    <div data-panel="/Tool/Less" style="display: none;">
+                       
+                    
+                       <div data-panel="/Tool/Less/Header">
+                           <ul class="left">
+                               <li data-cmd="editor:undo" class="icon" title="撤消 Ctrl+Z"><i class="fa fa-reply"></i></li>
+                               <li data-cmd="editor:redo" class="icon" title="重做 Ctrl+Y"><i class="fa fa-share"></i></li>
+                               <li data-cmd="switch:crlf" class="icon" title="自动换行"><i class="fas fa-level-down-alt"></i></li>
+                               <li data-cmd="switch:fullscreen" class="icon" title="全屏"><i class="fa fa-tv"></i></li>
+                               <li data-cmd="themes" class="icon" title="编辑器主题"><i class="fas fa-adjust"></i></li>
+                       
+                               <li class="right">
+                                   <ul>
+                                       <li data-id="chk-minify"></li>
+                                       <li><button data-cmd="copy">复制内容</button></li>
+                                       <li data-id="md5" class="md5"></li>
+                                   </ul>
+                               </li>
+                       
                            
-                               <div data-id="markdoc" class="markdoc"></div>
-                           </div>
-                        
+                       
+                           </ul>
+                       
+                       
+                       
+                           
+                           
                           
-                        </div>
-                        
-                        
-                        <div data-panel="/Tool/Main/JS" style="display: none;">
                            
-                        
-                           <div data-panel="/Tool/Main/JS/Header">
-                               <ul class="left">
-                                   <li data-cmd="editor:undo" class="icon" title="撤消 Ctrl+Z"><i class="fa fa-reply"></i></li>
-                                   <li data-cmd="editor:redo" class="icon" title="重做 Ctrl+Y"><i class="fa fa-share"></i></li>
-                                   <li data-cmd="switch:crlf" class="icon" title="自动换行"><i class="fas fa-level-down-alt"></i></li>
-                                   <li data-cmd="switch:fullscreen" class="icon" title="全屏"><i class="fa fa-tv"></i></li>
-                                   <li data-cmd="themes" class="icon" title="编辑器主题"><i class="fas fa-adjust"></i></li>
-                           
-                                   <li class="right">
-                                       <ul>
-                                           <li><button data-cmd="copy">复制内容</button></li>
-                                           <li data-id="md5" class="md5"></li>
-                                       </ul>
+                       
+                       
+                       </div>
+                       <div data-panel="/Tool/Less/Themes">
+                           <ul data-panel="/Tool/Less/Themes/List" style="display: none;">
+                               <template name="item" placeholder="items">
+                                   <li data-index="{index}">
+                                       {name}
+                                       <template name="desc" placeholder="desc">
+                                           <span>({desc})</span>
+                                       </template>
                                    </li>
+                               </template>
+                           </ul>
+                       </div>
+                       <div data-panel="/Tool/Less/Editor">
+                           <textarea></textarea>
+                       </div>
+                       <div data-panel="/Tool/Less/Preview">
                            
-                               
-                           
-                               </ul>
-                           
-                           
-                           
-                               
-                               
-                              
-                               
-                           
-                           
+                           <div class="compile">
+                               <button data-cmd="compile">开始编译</button>
                            </div>
-                           <div data-panel="/Tool/Main/JS/Themes">
-                               <ul data-panel="/Tool/Main/JS/Themes/List" style="display: none;">
-                                   <template name="item" placeholder="items">
-                                       <li data-index="{index}">
-                                           {name}
-                                           <template name="desc" placeholder="desc">
-                                               <span>({desc})</span>
-                                           </template>
-                                       </li>
-                                   </template>
-                               </ul>
-                           </div>
-                           <div data-panel="/Tool/Main/JS/Editor">
-                               <textarea></textarea>
-                           </div>
-                           <div data-panel="/Tool/Main/JS/Preview">
-                               
-                               <div class="compile">
-                                   <button data-cmd="compile">开始压缩</button>
-                               </div>
-                           
-                               <div data-id="markdoc" class="markdoc"></div>
-                           </div>
-                        
-                          
-                        </div>
-                        
-                    </main>
+                       
+                           <div data-id="markdoc" class="markdoc"></div>
+                       </div>
+                    
+                      
+                    </div>
                     
                     
+                    <div data-panel="/Tool/MD5" style="display: none;">
+                       
                     
+                       <div data-panel="/Tool/MD5/Input">
+                          <textarea placeholder="请输入内容"></textarea>
+                          <button>生成 MD5</button>
+                       </div>
+                    
+                       <div data-panel="/Tool/MD5/Output">
+                          <template>
+                             {md5}
+                          </template>
+                       </div>
+                    
+                     
+                      
+                    </div>
+                    
+                    
+                    <div data-panel="/Tool/QRCode" style="display: none;">
+                      
+                       <main data-panel="/Tool/QRCode/Main">
+                          <div data-panel="/Tool/QRCode/Main/Input">
+                             <textarea placeholder="请输入内容"></textarea>
+                             <button>生成二维码</button>
+                          </div>
+                    
+                          <ul data-panel="/Tool/QRCode/Main/Output">
+                             <template>
+                                <li>
+                                   <a href="{href}" target="_blank">
+                                      <img src="{src}">
+                                   </a>
+                                </li>
+                                <li class="label">
+                                   <a href="{url}">{url}</a>
+                                </li>
+                             </template>
+                          </ul>
+                       </main>
+                    
+                       <aside data-panel="/Tool/QRCode/Statics">
+                          <ul data-panel="/Tool/QRCode/Statics/List">
+                             <template>
+                                <li data-index="{index}">
+                                   <a href="{href}" target="_blank">
+                                      <img src="{src}" />
+                                   </a>
+                                   <a href="{url}" target="_blank">{url}</a>
+                                </li>
+                             </template>
+                          </ul>
+                       </aside>
+                      
+                    </div>
                     
                 
                 </div>
@@ -1971,7 +1859,7 @@
                     {root}
     
                     <template name="dir">
-                        <li data-id="{id}" class="item dir {open} {on}" {style}>
+                        <li data-id="{id}" class="item dir {open} {on} {empty}" {style}>
                             <div data-cmd="item">
                                 <i data-cmd="icon-dir" class="icon {icon}"></i>
                                 <span>{name}</span>
@@ -2279,6 +2167,19 @@
         </div>
     </template>
     
+    <template id="tpl-Tabs">
+        <div id="{id}" {class} {dataset} {style}>
+            <ul>
+                <template name="item" placeholder="items">
+                    <li data-index="{index}">
+                        <template name="icon" placeholder="icon"><i class="{icon}"></i></template>{name}
+                    </li>
+                </template>
+            </ul>
+            <b data-id="slider"></b>
+        </div>
+    </template>
+    
 
     
 
@@ -2288,14 +2189,13 @@
     <script src="f/highlight/highlight.pack.js?B295"></script>
     <script src="f/marked/marked.mod.min.js?624E"></script>
     <script src="f/resolve-url/resolve-url.min.js?3CC8"></script>
-    <script src="f/datetimepicker/datetimepicker.mod.min.js?1094"></script>
     <script src="f/codemirror-5.61.1/lib/codemirror.js?4BEA"></script>
 
 
     <script src="2ACA5B005DB8F0CB1A9BC2FE1A956889.js"></script>
 
     
-    <script src="2CD46FDF0D8E2A40A777411870A671B7.js"></script>
+    <script src="9C2B4A19EC64BF595F63E8DA322B19B3.js"></script>
 
 </body>
 

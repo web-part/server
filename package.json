@@ -1,6 +1,6 @@
 {
   "name": "@webpart/server",
-  "version": "4.5.4",
+  "version": "5.0.2",
   "description": "用于开发阶段的本地 web 服务器，提供可视化管理界面",
   "main": "index.js",
   "scripts": {},
@@ -18,13 +18,13 @@
   },
   "dependencies": {
     "@definejs/file": "^2.0.1",
-    "@webpart/console": "^2.1.1",
-    "@webpart/server-api": "^3.6.2",
-    "@webpart/server-core": "^2.0.2",
-    "@webpart/server-proxy": "^1.0.0",
-    "@webpart/server-qrcode": "^2.0.0",
-    "@webpart/server-session": "^2.0.0",
-    "@webpart/server-static": "^1.0.1",
+    "@webpart/console": "^3.0.2",
+    "@webpart/server-api": "^4.0.4",
+    "@webpart/server-core": "^2.0.3",
+    "@webpart/server-proxy": "^1.0.1",
+    "@webpart/server-qrcode": "^2.0.1",
+    "@webpart/server-session": "^2.0.1",
+    "@webpart/server-static": "^1.0.2",
     "colors": "^1.4.0"
   }
 }
